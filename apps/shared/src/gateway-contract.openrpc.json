@@ -21071,14 +21071,18 @@
             "type": "integer"
           },
           "graphics": {
-            "anyOf": [
-              {},
-              {
-                "type": "null"
-              }
+            "default": false,
+            "title": "Graphics",
+            "type": "boolean"
+          },
+          "terminal": {
+            "default": "unicode",
+            "enum": [
+              "kitty",
+              "unicode"
             ],
-            "default": null,
-            "title": "Graphics"
+            "title": "Terminal",
+            "type": "string"
           }
         },
         "required": [
@@ -25955,6 +25959,15 @@
             "default": false,
             "title": "Graphics",
             "type": "boolean"
+          },
+          "terminal": {
+            "default": "unicode",
+            "enum": [
+              "kitty",
+              "unicode"
+            ],
+            "title": "Terminal",
+            "type": "string"
           }
         },
         "title": "PetCellsParams",
