@@ -131,6 +131,25 @@ def check_route(base: str, key: str, route: dict) -> dict:
             "prompt_tokens": usage.get("prompt_tokens"), "completion_tokens": usage.get("completion_tokens")}
 
 
+def check_local(base: str, key: str, model: str) -> dict:
+    """A local OpenAI-compatible server (llama-server): it answers for *model* with the requested tool call."""
+    payload = {"model": model, "max_tokens": MAX_TOKENS, "tools": [TOOL], "tool_choice": "auto",
+               "messages": [{"role": "user", "content": PROMPT}]}
+    status, body = _request(base, key, "/chat/completions", payload)
+    usage = body.get("usage") or {}
+    problems = [p for p, bad in ((f"HTTP {status}", status != 200), ("no record_number(n=7) tool call",
+                                                                     status == 200 and not _tool_call_ok(body)),
+                                 ("no usage reported", status == 200 and not usage.get("prompt_tokens"))) if bad]
+    return {"check": f"local server {base} serving {model}", "ok": not problems, "model": model,
+            "detail": "; ".join(problems) or "serves the model and calls tools", "served_model": body.get("model")}
+
+
+def server_props(base: str, key: str) -> dict:
+    """llama-server's own account of what it serves (model file, context, build), for the run's manifest."""
+    status, body = _request(base.removesuffix("/v1"), key, "/props")
+    return body if status == 200 else {"error": f"HTTP {status}"}
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.split("\n", 1)[0])
     parser.add_argument("--key-file", type=Path, required=True, help="file holding the OpenRouter key, nothing else")

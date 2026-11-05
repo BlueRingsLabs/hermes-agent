@@ -24,7 +24,9 @@ from evals.learning_loop import report
 
 ROOT = Path(__file__).resolve().parents[2]
 KEY = "sk-or-smoke-0123456789abcdef"
-ROUTE = "fake/learner=fake-up=FakeUp"
+# (provider flag, --route, upstream the stand-in reports): OpenRouter names who served the call, llama-server does not.
+MODES = {"openrouter": ("openrouter", "fake/learner=fake-up=FakeUp", "FakeUp"),
+         "local": ("custom", "fake/learner==", None)}
 # Long enough that a worker which skipped the review barrier would exit before the fork writes its skill.
 REVIEW_LATENCY_S = 2.0
 SKILL = ("---\nname: invoicer-workflow\ndescription: Test, commit and changelog rules for invoicer.\n---\n\n"
@@ -56,6 +58,7 @@ def _text(message):
 
 class _Provider(BaseHTTPRequestHandler):
     seen: list = []
+    upstream: str | None = None
     counter = [0]
 
     def log_message(self, *args):
@@ -85,6 +88,8 @@ class _Provider(BaseHTTPRequestHandler):
         if "percent_of" in prompt:
             return ("episode1", "terminal", {"command": EPISODE_1[steps]}) if steps < len(EPISODE_1) else (
                 "episode1", None, "Added percent_of, logged it and committed it.")
+        if "Call record_number with n set to 7" in prompt:  # the local pre-flight's probe
+            return ("preflight", "record_number", {"n": 7}) if steps < 1 else ("preflight", None, "Recorded.")
         if "quantity is zero" in prompt:
             return ("episode2", "terminal", {"command": "git status --short"}) if steps < 1 else (
                 "episode2", None, "Looked at the repository.")
@@ -113,7 +118,9 @@ class _Provider(BaseHTTPRequestHandler):
             delta, finish = {"role": "assistant", "content": payload}, "stop"
         usage = {"prompt_tokens": len(json.dumps(messages)) // 4, "completion_tokens": 20}
         usage["total_tokens"] = usage["prompt_tokens"] + 20
-        head = {"id": f"gen-{self.counter[0]}", "created": 0, "model": body.get("model"), "provider": "FakeUp"}
+        head = {"id": f"gen-{self.counter[0]}", "created": 0, "model": body.get("model")}
+        if self.upstream:
+            head["provider"] = self.upstream
         if not body.get("stream"):
             message = {k: v for k, v in delta.items() if k != "tool_calls"}
             if tool:
@@ -141,13 +148,17 @@ def provider():
     server.shutdown()
 
 
-def test_two_episodes_per_arm_wire_learning_through_the_real_agent(provider, tmp_path):
+@pytest.mark.parametrize("mode", sorted(MODES))
+def test_two_episodes_per_arm_wire_learning_through_the_real_agent(provider, tmp_path, mode):
+    flag, route, _Provider.upstream = MODES[mode]
     key_file = tmp_path / "key"
     key_file.write_text(KEY, encoding="utf-8")
     out = tmp_path / "run"
+    # --disposable-host: this test's container is throwaway and its "model" is the script above.
     proc = subprocess.run(
         [sys.executable, str(ROOT / "evals/learning_loop/live.py"), "--key-file", str(key_file), "--out", str(out),
-         "--base-url", provider, "--route", ROUTE, "--reps", "1", "--episodes", "percent_of,skip_empty_lines"],
+         "--base-url", provider, "--provider", flag, "--route", route, "--reps", "1", "--disposable-host",
+         "--episodes", "percent_of,skip_empty_lines"],
         cwd=ROOT, capture_output=True, text=True, timeout=900, check=False)
     assert proc.returncode == 0, proc.stdout[-3000:] + proc.stderr[-3000:]
     rows = {(r["arm"], r["episode"]): r for r in map(json.loads, (out / "results.jsonl").read_text().splitlines())}
@@ -157,9 +168,10 @@ def test_two_episodes_per_arm_wire_learning_through_the_real_agent(provider, tmp
         assert first["exit_code"] == 0 and first["passed"], first.get("checks")
         assert first["review_fired"] and "invoicer-workflow" in first["skills_created"], first["audit"]
         assert first["audit"]["route_ok"] and first["audit"]["calls_main"] >= len(EPISODE_1)
-    # Every chat request on the wire, the review fork's included, carries the pin.
-    pinned = [s["provider"] for s in _Provider.seen]
-    assert pinned and all((p or {}).get("only") == ["fake-up"] for p in pinned), pinned
+    # On OpenRouter every chat request, the review fork's included, carries the pin; a local server gets none.
+    sent = [s["provider"] for s in _Provider.seen]
+    expected = {"only": ["fake-up"], "require_parameters": True} if mode == "openrouter" else None
+    assert sent and all(p == expected for p in sent), sent
     second = [s["skill_in_system"] for s in _Provider.seen if s["kind"] == "episode2"]
     # Cells run carry first, then fresh; each episode 2 makes two requests (one tool turn, one answer).
     assert second[:2] == [True, True] and second[2:] == [False, False], second
@@ -168,3 +180,16 @@ def test_two_episodes_per_arm_wire_learning_through_the_real_agent(provider, tmp
     summary = report.summarise(list(rows.values()))["models"]["fake/learner"]
     assert summary["parity_episode_1"]["score_diff"] == [0.0]
     assert summary["later_episodes"]["score_diff_mean"] == 0.0 and summary["cost_per_episode_usd"] is None
+
+
+def test_a_model_never_runs_as_root_unless_the_host_is_declared_disposable(monkeypatch, tmp_path):
+    from evals.learning_loop import live
+    key_file = tmp_path / "key"
+    key_file.write_text(KEY, encoding="utf-8")
+    monkeypatch.setattr(live.os, "geteuid", lambda: 0)
+    monkeypatch.setattr(sys, "argv", ["live.py", "--key-file", str(key_file), "--out", str(tmp_path / "run"),
+                                      "--provider", "custom", "--base-url", "http://127.0.0.1:9/v1",
+                                      "--route", "local/qwen=="])
+    with pytest.raises(SystemExit, match="as root"):
+        live.main()
+    assert not (tmp_path / "run").exists()  # refused before anything was created

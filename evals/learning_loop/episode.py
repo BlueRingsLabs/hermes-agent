@@ -32,6 +32,7 @@ def _parse() -> argparse.Namespace:
     for flag in ("cell", "episode", "model", "only", "upstream", "base-url", "arm", "out"):
         parser.add_argument(f"--{flag}", required=True)
     parser.add_argument("--rep", type=int, required=True)
+    parser.add_argument("--provider", default="openrouter", help="openrouter, or custom for a local server")
     parser.add_argument("--max-iterations", type=int, default=40)
     return parser.parse_args()
 
@@ -52,11 +53,14 @@ def _sandbox(cell: Path) -> tuple[Path, Path]:
     return home, workspace
 
 
-def _write_config(home: Path, model: str) -> None:
-    """The model, named the way a configured user's config.yaml names it (the core_tool_deferral worker does the
-    same). The provider pin travels as AIAgent arguments, as the CLI derives them from provider_routing, and the
-    review fork copies it from the parent."""
-    (home / "config.yaml").write_text(f"model:\n  provider: openrouter\n  model: {model}\n", encoding="utf-8")
+def _write_config(home: Path, model: str, provider: str, base_url: str) -> None:
+    """The model as a configured user's config.yaml names it (docs: integrations/providers.md); a local server is a
+    ``custom`` provider with its base_url. An OpenRouter pin travels as AIAgent arguments, as the CLI derives them
+    from provider_routing, and the review fork copies it from the parent."""
+    lines = ["model:", f"  default: {model}", f"  provider: {provider}"]
+    if provider != "openrouter":
+        lines.append(f"  base_url: {base_url}")
+    (home / "config.yaml").write_text("\n".join(lines) + "\n", encoding="utf-8")
 
 
 def _learning_state(home: Path) -> dict:
@@ -89,10 +93,10 @@ def _tool_counts(messages: list[dict]) -> dict:
 
 def _run_agent(args: argparse.Namespace, prompt: str) -> tuple[object, dict, str | None]:
     from run_agent import AIAgent
-    agent = AIAgent(base_url=args.base_url, api_key=os.environ["OPENROUTER_API_KEY"], provider="openrouter",
+    pins = {"providers_allowed": [args.only], "provider_require_parameters": True} if args.provider == "openrouter" else {}
+    agent = AIAgent(base_url=args.base_url, api_key=os.environ["OPENROUTER_API_KEY"], provider=args.provider,
                     model=args.model, quiet_mode=True, enabled_toolsets=["hermes-cli"], platform="cli",
-                    max_iterations=args.max_iterations, providers_allowed=[args.only],
-                    provider_require_parameters=True, session_id=f"ll-{args.arm}-{args.rep}-{args.episode}")
+                    max_iterations=args.max_iterations, session_id=f"ll-{args.arm}-{args.rep}-{args.episode}", **pins)
     try:
         return agent, agent.run_conversation(prompt) or {}, None
     except Exception as error:  # the record must say why the run ended; the traceback goes to stderr
@@ -104,7 +108,7 @@ def main() -> int:
     args = _parse()
     cell = Path(args.cell)
     home, workspace = _sandbox(cell)
-    _write_config(home, args.model)
+    _write_config(home, args.model, args.provider, args.base_url)
     from evals.learning_loop import audit, family_conventions as fam
     capture = audit.attach()
     episode = next(e for e in fam.EPISODES if e.id == args.episode)

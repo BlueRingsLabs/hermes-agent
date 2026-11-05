@@ -53,6 +53,9 @@ def _parse() -> argparse.Namespace:
     parser.add_argument("--episodes", help="comma list of episode ids (default: the whole family, in order)")
     parser.add_argument("--budget-usd", type=float, help="stop before an episode once this much is spent")
     parser.add_argument("--max-iterations", type=int, default=40)
+    parser.add_argument("--provider", default="openrouter", help="openrouter, or custom for a local server")
+    parser.add_argument("--disposable-host", action="store_true",
+                        help="this machine is a throwaway sandbox (e.g. a Kaggle notebook): allow running as root")
     parser.add_argument("--base-url", default=preflight.API, help=argparse.SUPPRESS)
     parser.add_argument("--route", action="append", default=[], help=argparse.SUPPRESS)  # model=only=upstream
     return parser.parse_args()
@@ -109,7 +112,7 @@ def _worker(args: argparse.Namespace, key: str, route: dict, arm: str, rep: int,
     out = cell / f"{episode}.json"
     cmd = [sys.executable, str(REPO / "evals/learning_loop/episode.py"), "--cell", str(cell), "--episode", episode,
            "--model", route["model"], "--only", route["only"], "--upstream", route["provider_name"],
-           "--base-url", args.base_url, "--arm", arm, "--rep", str(rep), "--out", str(out),
+           "--base-url", args.base_url, "--provider", args.provider, "--arm", arm, "--rep", str(rep), "--out", str(out),
            "--max-iterations", str(args.max_iterations)]
     env = {**os.environ, "OPENROUTER_API_KEY": key,
            "PYTHONPATH": os.pathsep.join([str(REPO), *filter(None, [os.environ.get("PYTHONPATH")])])}
@@ -149,6 +152,15 @@ def _scan_for_key(out: Path, key: str) -> list[str]:
     return [str(p) for p in out.rglob("*") if p.is_file() and needle in p.read_bytes()]
 
 
+def _local_preflight_or_exit(args: argparse.Namespace, key: str, routes: list[dict]) -> dict:
+    checks = [preflight.check_local(args.base_url, key, r["model"]) for r in routes]
+    for check in checks:
+        print(f"{'PASS' if check['ok'] else 'FAIL'}  {check['check']}: {check['detail']}")
+    if not all(c["ok"] for c in checks):
+        raise SystemExit("local pre-flight failed: nothing was run")
+    return preflight.server_props(args.base_url, key)
+
+
 def _preflight_or_exit(args: argparse.Namespace, key: str, routes: list[dict]) -> float:
     checks = [preflight.check_key(args.base_url, key), *(preflight.check_route(args.base_url, key, r) for r in routes)]
     for check in checks:
@@ -161,8 +173,9 @@ def _preflight_or_exit(args: argparse.Namespace, key: str, routes: list[dict]) -
 def main() -> int:
     args = _parse()
     live = args.base_url == preflight.API
-    if live and os.geteuid() == 0:
-        raise SystemExit("refusing to run a live model's shell commands as root: use an unprivileged account")
+    if os.geteuid() == 0 and not args.disposable_host:
+        raise SystemExit("refusing to run a model's shell commands as root: use an unprivileged account, or pass "
+                         "--disposable-host on a throwaway sandbox")
     if live and args.budget_usd is None:
         raise SystemExit("a live run needs --budget-usd")
     key = args.key_file.expanduser().read_text(encoding="utf-8").strip()
@@ -170,6 +183,7 @@ def main() -> int:
     episodes = args.episodes.split(",") if args.episodes else [e.id for e in fam.EPISODES]
     args.out.mkdir(parents=True, exist_ok=True)
     usage_start = _preflight_or_exit(args, key, routes) if live else None
+    server = _local_preflight_or_exit(args, key, routes) if args.provider != "openrouter" else None
     template = _seed_template(args.out)
     results, done, stopped = args.out / "results.jsonl", _done(args.out / "results.jsonl"), None
     for rep in range(args.reps):
@@ -190,7 +204,8 @@ def main() -> int:
                     print(json.dumps({k: row.get(k) for k in ("model", "arm", "rep", "episode", "exit_code",
                                                               "score", "review_fired", "cost_usd")}))
     leaks = _scan_for_key(args.out, key)
-    manifest = {"routes": routes, "arms": args.arms, "reps": args.reps, "episodes": episodes, "live": live,
+    manifest = {"routes": routes, "provider": args.provider, "base_url": args.base_url, "server": server,
+                "arms": args.arms, "reps": args.reps, "episodes": episodes, "live": live,
                 "budget_usd": args.budget_usd, "spent_usd": _spent(args, key, usage_start), "stopped": stopped,
                 "key_found_in": leaks}
     (args.out / "manifest.json").write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")

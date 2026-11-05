@@ -47,8 +47,9 @@ class _OpenRouterStub(BaseHTTPRequestHandler):
     def do_POST(self):
         payload = json.loads(self.rfile.read(int(self.headers["Content-Length"])))
         model = payload["model"]
-        assert payload["provider"] == {"only": [next(r["only"] for r in preflight.ROUTES if r["model"] == model)],
-                                       "allow_fallbacks": False, "require_parameters": True}
+        if "provider" in payload or model in {r["model"] for r in preflight.ROUTES}:  # a local check sends no pin
+            assert payload["provider"] == {"only": [next(r["only"] for r in preflight.ROUTES if r["model"] == model)],
+                                           "allow_fallbacks": False, "require_parameters": True}
         if model in self.scenario.get("no_endpoints", ()):
             return self._send(404, {"error": {"message": "No endpoints found matching your data policy"}})
         calls = [] if model in self.scenario.get("no_tool_call", ()) else [
@@ -76,6 +77,7 @@ def stub(tmp_path):
         assert KEY not in printed.out + printed.err + written  # the key never reaches any output
         return code, printed.out, json.loads(written)
 
+    run.base = f"http://127.0.0.1:{server.server_address[1]}"
     yield run
     server.shutdown()
 
@@ -112,3 +114,16 @@ def test_privacy_excluded_provider_names_the_likely_cause(stub, capsys):
     glm = next(c for c in checks if c.get("model") == "z-ai/glm-5.3")
     assert code == 1
     assert glm["ok"] is False and "privacy settings" in glm["detail"]
+
+
+def test_local_server_passes_when_it_serves_the_model_and_calls_tools(stub, capsys):
+    base = stub.base
+    check = preflight.check_local(base, KEY, "local/qwen")
+    assert check["ok"] and check["served_model"] == "local/qwen"
+
+
+def test_local_server_without_the_tool_call_fails(stub, capsys):
+    base = stub.base
+    _OpenRouterStub.scenario = {"no_tool_call": {"local/qwen"}}
+    check = preflight.check_local(base, KEY, "local/qwen")
+    assert not check["ok"] and "tool call" in check["detail"]
