@@ -77,6 +77,13 @@ def check_key(base: str, key: str) -> dict:
             "limit_remaining": data.get("limit_remaining"), "usage": data.get("usage")}
 
 
+def key_usage(base: str, key: str) -> float | None:
+    """Spend so far on this key in USD, by OpenRouter's own counter (every charged call, whatever made it)."""
+    status, body = _request(base, key, "/key")
+    usage = (body.get("data") or {}).get("usage") if status == 200 else None
+    return float(usage) if isinstance(usage, (int, float)) else None
+
+
 def _tool_call_ok(body: dict) -> bool:
     calls = ((body.get("choices") or [{}])[0].get("message") or {}).get("tool_calls") or []
     if not calls:

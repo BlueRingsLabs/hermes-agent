@@ -2,8 +2,9 @@
 
 Hermes leads with its learning loop (`README.md:19`): memory the agent curates, skills it writes after
 complex tasks, a background review that forks after turns to save both, and a curator that ages unused
-skills out. This directory measures what that loop **costs**. Whether it pays for itself is the question
-of [RFC #96704](https://github.com/NousResearch/hermes-agent/issues/96704) and its first arm,
+skills out. This directory measures what that loop **costs** (`prompt_growth.py`, offline) and runs a **pilot of
+what it buys** (`live.py`, real models). The outcome question is the one
+[RFC #96704](https://github.com/NousResearch/hermes-agent/issues/96704) asks, and its first arm is
 [#122544](https://github.com/NousResearch/hermes-agent/pull/122544); nothing here duplicates them.
 
 ## `prompt_growth.py`: what learning costs every later API call
@@ -99,3 +100,78 @@ What it does not show: whether a larger library makes the agent choose worse. Th
   [#128038](https://github.com/NousResearch/hermes-agent/pull/128038)). The learned corpus holds no gated
   skill, so the numbers above are unaffected.
 - The background review's own tokens (the fork that writes these skills) are not measured here.
+
+## `live.py`: a pilot of what carry-over buys
+
+The pilot answers one question per model: when a later session inherits what earlier sessions learned, is it more
+often right, or cheaper? It runs the default product end to end and tests no hypothesis: its numbers (cost per
+episode, the spread between reps, whether the review fires at all) size the full study, whose hypotheses and
+thresholds are fixed in this README before its first scored run.
+
+### Design
+
+- **Unit.** A cell is (model, arm, rep): the family's five episodes in order, each a new session in a fresh
+  interpreter (`episode.py`), a real `AIAgent` with the default CLI tool surface, memory and background review on.
+- **Arms.** Both run the identical default product, review fork included, so inside an episode they are the same.
+  `carry` keeps the cell's `HERMES_HOME` from episode to episode, as a real user's home does; `fresh` resets it to
+  a just-installed home before every episode. Carry minus fresh on episodes 2 to 5 is the effect of carry-over
+  alone, and episode 1, identical in both arms, is a built-in parity check.
+- **Family.** `family_conventions.py`: a small invoicing project with three rules written only in its
+  CONTRIBUTING.md (tests through `./scripts/check`, a commit format its hook enforces, a changelog line nothing
+  enforces) and five realistic changes. The project is rebuilt byte-identical before every episode. Grading needs
+  no model: hidden tests, the project's suite, the commit and the changelog line.
+- **When learning can happen at all.** The skill review fires only after a turn with at least 10 tool iterations
+  (`agent/turn_finalizer.py:863-866`) and the memory review every 10 user turns of a session
+  (`agent/turn_context.py:765-773`). Every record says whether the review fired and what it wrote, so a null
+  result can be told apart from a loop that never ran.
+- **Models.** `z-ai/glm-5.3`, the model Hermes lands on when the user picks none (`"default": true` in
+  `website/static/api/model-catalog.json`), and `anthropic/claude-sonnet-5.5`, a frontier model from another
+  family. Each is pinned to its maker's own OpenRouter endpoint (`preflight.ROUTES`): OpenRouter serves glm-5.3
+  from 48 endpoints between fp4 and fp8, and an unpinned run would mix quantisations nobody could reproduce.
+- **Audit.** Every API call of the main agent and the review fork is read from Hermes' own log lines
+  (`audit.py`), with the upstream provider OpenRouter reports; one call off the pinned route makes the episode an
+  infrastructure failure, never scored. Spend comes from OpenRouter's per-key counter, which counts every charged
+  call whatever made it.
+
+### Running it
+
+```bash
+python3 evals/learning_loop/preflight.py --key-file ~/.config/openrouter/hermes-eval.key
+scripts/run-in-hermes-env python evals/learning_loop/live.py --key-file ~/.config/openrouter/hermes-eval.key \
+    --out evals/learning_loop/runs/pilot --budget-usd 40
+python3 evals/learning_loop/report.py evals/learning_loop/runs/pilot
+```
+
+The default pilot is 2 models x 2 arms x 3 reps x 5 episodes, run one episode at a time. Once the budget is
+spent it starts no further episode (the key's own credit limit is the hard cap), and it resumes where it stopped:
+each episode's starting home is snapshotted and restored if the episode is retried. At the end it searches every output file for the key and
+fails loudly if it finds it.
+
+### Safety
+
+The agent runs real shell commands. In a programmatic session there is no approval surface, and commands the gate
+flags are approved unless an unattended context applies (`tools/approval.py:1211`), so the boundary is the
+operating system, as SECURITY.md section 2.2 says. A live run therefore refuses to start as root; run it as an
+unprivileged account that holds nothing you care about, or in a VM. Each session's `HOME` is redirected into the
+cell with the `core_tool_deferral` sandbox, so `~` never reaches the operator's real home.
+
+### How I know it works
+
+- `tests/evals/test_learning_loop_smoke.py` runs two cells end to end against a scripted OpenAI-compatible server on
+  127.0.0.1: real `AIAgent` sessions, real tools, the real review fork. Episode 1 is solved through Hermes' terminal
+  tool in 12 tool turns and graded full marks; the review fires and writes a skill; every chat request, the fork's
+  included, carries the provider pin on the wire; in episode 2 the learned skill is in the system prompt for
+  `carry` and absent for `fresh`; the key reaches no output file.
+- The smoke test was shown to fail when the fresh arm stopped resetting, when the pin was dropped, and when the
+  worker stopped waiting for the review fork (the fork's skill was then lost at exit).
+- `tests/evals/test_learning_loop_family.py` holds the grader to known answers on all five episodes, both ways.
+  `tests/evals/test_learning_loop_preflight.py` and `tests/evals/test_learning_loop_report.py` cover the pre-flight's
+  refusals and the report's arithmetic.
+
+### What the pilot must show before the full study
+
+1. Every scored episode stayed on its pinned route.
+2. The review fires in episode 1 for both models in most reps; if it does not, the family does not exercise the
+   loop and is redesigned before anything scales.
+3. Episode 1 is at parity between the arms, within the spread between reps.
+4. The measured cost per episode and the reps the report says the full study needs, which together set its cap.
