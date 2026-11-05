@@ -1,0 +1,34 @@
+{
+  "memory_blocks.txt": {
+    "chars": 3794,
+    "tokens_o200k_base": 941
+  },
+  "skills_index_0000.txt": {
+    "chars": 4311,
+    "tokens_o200k_base": 1015
+  },
+  "skills_index_0010.txt": {
+    "chars": 5088,
+    "tokens_o200k_base": 1211
+  },
+  "skills_index_0025.txt": {
+    "chars": 6223,
+    "tokens_o200k_base": 1474
+  },
+  "skills_index_0050.txt": {
+    "chars": 8152,
+    "tokens_o200k_base": 1944
+  },
+  "skills_index_0100.txt": {
+    "chars": 11959,
+    "tokens_o200k_base": 2875
+  },
+  "skills_index_0200.txt": {
+    "chars": 19860,
+    "tokens_o200k_base": 4914
+  },
+  "skills_index_0400.txt": {
+    "chars": 35661,
+    "tokens_o200k_base": 8989
+  }
+}

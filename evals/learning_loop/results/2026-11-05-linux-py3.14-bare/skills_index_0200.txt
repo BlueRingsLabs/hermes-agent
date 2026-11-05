@@ -1,0 +1,269 @@
+## Skills
+Before replying, scan the skills below. If a skill matches or is even partially relevant to your task, you MUST load it with skill_view(name) and follow its instructions. Err on the side of loading — it is always better to have context you don't need than to miss critical steps, pitfalls, or established workflows. Skills contain specialized knowledge — API endpoints, tool-specific commands, and proven workflows that outperform general-purpose approaches. Load the skill even if you think you could handle the task with basic tools like web_search or terminal. Skills also encode the user's preferred approach, conventions, and quality standards for tasks like code review, planning, and testing — load them even for tasks you already know how to do, because the skill defines how it should be done here.
+If a skill has issues, fix it with skill_manage(action='patch').
+After difficult/iterative tasks, offer to save as a skill. If a skill you loaded was missing steps, had wrong commands, or needed pitfalls you discovered, update it before finishing.
+
+<available_skills>
+  autonomous-ai-agents:
+    - agent-merge-conflict-arbiter: Neutral arbiter for merge conflicts between two agents.
+    - agent-merge-conflict-arbiter-v2: Neutral arbiter for merge conflicts between two agents.
+    - antigravity-cli: Operate the Antigravity CLI (agy): plugins, auth, sandbox.
+    - antigravity-cli-v2: Operate the Antigravity CLI (agy): plugins, auth, sandbox.
+    - blackbox: Delegate coding tasks to the Blackbox AI multi-model CLI.
+    - blackbox-v2: Delegate coding tasks to the Blackbox AI multi-model CLI.
+    - claude-code: Delegate coding to Claude Code CLI (features, PRs).
+    - codex: Delegate coding to OpenAI Codex CLI (features, PRs).
+    - computer-use: Drive the desktop background-first; escalate on signal.
+    - dynamic-workflow: Plan-in-code fan-outs, adversarial verification, waves.
+    - dynamic-workflow-v2: Plan-in-code fan-outs, adversarial verification, waves.
+    - grok: Delegate coding to xAI Grok Build CLI (features, PRs).
+    - grok-v2: Delegate coding to xAI Grok Build CLI (features, PRs).
+    - hermes-agent: Use, configure, theme, extend, and orchestrate Hermes Agent.
+    - opencode: Delegate coding to OpenCode CLI (features, PR review).
+    - opencode-v2: Delegate coding to OpenCode CLI (features, PR review).
+  blockchain:
+    - hyperliquid: Hyperliquid market data, account history, trade review.
+    - hyperliquid-v2: Hyperliquid market data, account history, trade review.
+    - solana: Query Solana wallets, tokens, txs, and NFTs in USD.
+    - solana-v2: Query Solana wallets, tokens, txs, and NFTs in USD.
+  communication:
+    - one-three-one-rule: 1-3-1 decision briefs: problem, three options, one pick.
+    - one-three-one-rule-v2: 1-3-1 decision briefs: problem, three options, one pick.
+  creative:
+    - anatomy: Explain an idea as an interactive isometric machine figure.
+    - anatomy-v2: Explain an idea as an interactive isometric machine figure.
+    - archify: Validated interactive HTML diagrams, upstream-maintained.
+    - archify-v2: Validated interactive HTML diagrams, upstream-maintained.
+    - architecture-diagram: Dark-themed SVG architecture/cloud/infra diagrams as HTML.
+    - ascii-art: ASCII art: pyfiglet, cowsay, boxes, image-to-ascii.
+    - ascii-art-v2: ASCII art: pyfiglet, cowsay, boxes, image-to-ascii.
+    - ascii-video: ASCII video: convert video/audio to colored ASCII MP4/GIF.
+    - auteur: Design and build cinematic, award-level web pages.
+    - auteur-v2: Design and build cinematic, award-level web pages.
+    - baoyu-article-illustrator: Article illustrations: type × style × palette consistency.
+    - baoyu-article-illustrator-v2: Article illustrations: type × style × palette consistency.
+    - baoyu-comic: Knowledge comics (知识漫画): educational, biography, tutorial.
+    - baoyu-comic-v2: Knowledge comics (知识漫画): educational, biography, tutorial.
+    - baoyu-infographic: Infographics: 21 layouts x 21 styles (信息图, 可视化).
+    - brag: Project launch video via Hyperframes, upstream-maintained.
+    - brag-slim: Launch video from a project or URL, upstream-maintained.
+    - brag-slim-v2: Launch video from a project or URL, upstream-maintained.
+    - brag-v2: Project launch video via Hyperframes, upstream-maintained.
+    - claude-design: Design one-off HTML artifacts (landing, deck, prototype).
+    - comfyui: Generate images, video, and audio via diffusion workflows.
+    - comfyui-v2: Generate images, video, and audio via diffusion workflows.
+    - concept-diagrams: Generate flat, minimal educational SVG visuals as HTML.
+    - concept-diagrams-v2: Generate flat, minimal educational SVG visuals as HTML.
+    - creative-ideation: Generate ideas via named methods from creative practice.
+    - creative-ideation-v2: Generate ideas via named methods from creative practice.
+    - design-md: Author/validate/export Google's DESIGN.md token spec files.
+    - design-md-v2: Author/validate/export Google's DESIGN.md token spec files.
+    - draw-your-font: Turn a handwriting photo into an installable TTF font.
+    - draw-your-font-v2: Turn a handwriting photo into an installable TTF font.
+    - excalidraw: Hand-drawn Excalidraw JSON diagrams (arch, flow, seq).
+    - excalidraw-v2: Hand-drawn Excalidraw JSON diagrams (arch, flow, seq).
+    - humanizer: Humanize text: strip AI-isms and add real voice.
+    - impeccable: Frontend design guidance, upstream-maintained (impeccable).
+    - impeccable-v2: Frontend design guidance, upstream-maintained (impeccable).
+    - ip-as-logo: Design minimal cute IP mascot marks readable at 32px.
+    - ip-as-logo-v2: Design minimal cute IP mascot marks readable at 32px.
+    - kanban-video-orchestrator: Plan and run multi-agent video production pipelines.
+    - kanban-video-orchestrator-v2: Plan and run multi-agent video production pipelines.
+    - manim-video: Manim CE animations: 3Blue1Brown math/algo videos.
+    - meme-generation: Create meme PNGs from templates with Pillow text overlay.
+    - meme-generation-v2: Create meme PNGs from templates with Pillow text overlay.
+    - mono-color: Generate one- or two-ink editorial print poster images.
+    - mono-color-v2: Generate one- or two-ink editorial print poster images.
+    - p5js: p5.js sketches: gen art, shaders, interactive, 3D.
+    - pixel-art: Pixel art w/ era palettes (NES, Game Boy, PICO-8).
+    - pixel-art-v2: Pixel art w/ era palettes (NES, Game Boy, PICO-8).
+    - popular-web-designs: 54 real design systems (Stripe, Linear, Vercel) as HTML/CSS.
+    - pretext: Build creative browser demos with DOM-free text layout.
+    - pretext-v2: Build creative browser demos with DOM-free text layout.
+    - simple-english: Rewrite text to ASD-STE100 Simplified Technical English.
+    - simple-english-v2: Rewrite text to ASD-STE100 Simplified Technical English.
+    - sketch: Throwaway HTML mockups: 2-3 design variants to compare.
+    - sketch-v2: Throwaway HTML mockups: 2-3 design variants to compare.
+    - social-media-content-calendar: Plan multi-platform social campaigns: briefs to posting.
+    - social-media-content-calendar-v2: Plan multi-platform social campaigns: briefs to posting.
+    - songwriting-and-ai-music: Songwriting craft and Suno AI music prompts.
+    - tldraw-offline: Drive and script tldraw offline canvases with an agent.
+    - tldraw-offline-v2: Drive and script tldraw offline canvases with an agent.
+    - unreal-mcp: Automate Unreal Engine editor scenes, actors, and renders.
+    - unreal-mcp-v2: Automate Unreal Engine editor scenes, actors, and renders.
+  data-science:
+    - jupyter-notebook: Iterative Python via live Jupyter kernel (hamelnb).
+    - jupyter-notebook-v2: Iterative Python via live Jupyter kernel (hamelnb).
+  devops:
+    - actual-setup: Set up Actual Computer (actual.inc) inference in Hermes.
+    - actual-setup-v2: Set up Actual Computer (actual.inc) inference in Hermes.
+    - inference-sh-cli: Run 150+ AI apps (image, video, LLM) via inference.sh CLI.
+    - inference-sh-cli-v2: Run 150+ AI apps (image, video, LLM) via inference.sh CLI.
+    - pinggy-tunnel: Zero-install localhost tunnels over SSH via Pinggy.
+    - pinggy-tunnel-v2: Zero-install localhost tunnels over SSH via Pinggy.
+  dogfood:
+    - adversarial-ux-test: Roleplay a hostile user to find and triage UX pain points.
+    - adversarial-ux-test-v2: Roleplay a hostile user to find and triage UX pain points.
+  email:
+    - agentmail: Use when an agent needs AgentMail CLI email inboxes.
+    - agentmail-v2: Use when an agent needs AgentMail CLI email inboxes.
+    - email-inbox-triage: Triage an inbox: prioritize threads, draft replies safely.
+    - himalaya: Himalaya CLI: IMAP/SMTP email from terminal.
+  finance:
+    - 3-statement-model: Build integrated IS/BS/CF financial workbooks in Excel.
+    - 3-statement-model-v2: Build integrated IS/BS/CF financial workbooks in Excel.
+    - comps-analysis: Build comparable-company valuation workbooks in Excel.
+    - comps-analysis-v2: Build comparable-company valuation workbooks in Excel.
+    - dcf-model: Build discounted cash flow valuation workbooks in Excel.
+    - dcf-model-v2: Build discounted cash flow valuation workbooks in Excel.
+    - excel-author: Build auditable financial workbooks headless via openpyxl.
+    - excel-author-v2: Build auditable financial workbooks headless via openpyxl.
+    - lbo-model: Build leveraged buyout workbooks with IRR/MOIC in Excel.
+    - lbo-model-v2: Build leveraged buyout workbooks with IRR/MOIC in Excel.
+    - merger-model: Build M&A accretion/dilution workbooks in Excel.
+    - merger-model-v2: Build M&A accretion/dilution workbooks in Excel.
+    - polymarket: Query Polymarket: markets, prices, orderbooks, history.
+    - polymarket-v2: Query Polymarket: markets, prices, orderbooks, history.
+    - pptx-author: Build PowerPoint decks headless with python-pptx.
+    - pptx-author-v2: Build PowerPoint decks headless with python-pptx.
+    - stocks: Stock quotes, history, search, compare, crypto via Yahoo.
+    - stocks-v2: Stock quotes, history, search, compare, crypto via Yahoo.
+  gaming:
+    - pokemon-player: Play Pokemon via headless emulator + RAM reads.
+    - pokemon-player-v2: Play Pokemon via headless emulator + RAM reads.
+  health:
+    - fitness-nutrition: Workout planning, macros, and body metrics via wger/USDA.
+    - fitness-nutrition-v2: Workout planning, macros, and body metrics via wger/USDA.
+    - neuroskill-bci: Use live BCI cognitive and mood state from NeuroSkill.
+    - neuroskill-bci-v2: Use live BCI cognitive and mood state from NeuroSkill.
+  mcp:
+    - fastmcp: Build, test, and deploy Python MCP servers.
+    - fastmcp-v2: Build, test, and deploy Python MCP servers.
+    - mcporter: List, auth, and call MCP servers/tools from the terminal.
+    - mcporter-v2: List, auth, and call MCP servers/tools from the terminal.
+  media:
+    - gif-search: Search/download GIFs from Tenor via curl + jq.
+    - gif-search-v2: Search/download GIFs from Tenor via curl + jq.
+    - songsee: Audio spectrograms/features (mel, chroma, MFCC) via CLI.
+    - songsee-v2: Audio spectrograms/features (mel, chroma, MFCC) via CLI.
+    - youtube-content: YouTube transcripts to summaries, threads, blogs.
+  mlops:
+    - accelerate: Run PyTorch training across GPUs with minimal changes.
+    - accelerate-v2: Run PyTorch training across GPUs with minimal changes.
+    - chroma: Embedding database for RAG and semantic search.
+    - chroma-v2: Embedding database for RAG and semantic search.
+    - dspy: DSPy: declarative LM programs, auto-optimize prompts, RAG.
+    - dspy-v2: DSPy: declarative LM programs, auto-optimize prompts, RAG.
+    - lambda-labs: On-demand GPU cloud instances for ML training.
+    - lambda-labs-v2: On-demand GPU cloud instances for ML training.
+    - llama-cpp: llama.cpp local GGUF inference + HF Hub model discovery.
+    - llama-cpp-v2: llama.cpp local GGUF inference + HF Hub model discovery.
+    - modal: Serverless GPU cloud for ML jobs and model APIs.
+    - modal-v2: Serverless GPU cloud for ML jobs and model APIs.
+    - peft: Fine-tune large LLMs with LoRA on limited GPU memory.
+    - peft-v2: Fine-tune large LLMs with LoRA on limited GPU memory.
+    - pytorch-lightning: Clean training loops with built-in distributed support.
+    - pytorch-lightning-v2: Clean training loops with built-in distributed support.
+    - saelens: Train sparse autoencoders to interpret model features.
+    - saelens-v2: Train sparse autoencoders to interpret model features.
+    - segment-anything-model: SAM: zero-shot image segmentation via points, boxes, masks.
+    - segment-anything-model-v2: SAM: zero-shot image segmentation via points, boxes, masks.
+    - simpo: Reference-free preference alignment, simpler than DPO.
+    - simpo-v2: Reference-free preference alignment, simpler than DPO.
+  - obsidian: Read, search, create, and edit notes in the Obsidian vault.
+  productivity:
+    - box: Box manages cloud files, sharing, search, and metadata.
+    - box-v2: Box manages cloud files, sharing, search, and metadata.
+    - canvas: Fetch Canvas LMS courses and assignments via API token.
+    - canvas-v2: Fetch Canvas LMS courses and assignments via API token.
+    - decision-questionnaire: Turn an unanswerable decision into a questionnaire doc.
+    - decision-questionnaire-v2: Turn an unanswerable decision into a questionnaire doc.
+    - document-to-action-items: Extract cited obligations, deadlines, tasks from documents.
+    - google-workspace: Gmail, Calendar, Drive, Docs, Sheets via gws CLI or Python.
+    - live-dashboard: Build self-updating dashboards from live sources.
+    - live-dashboard-v2: Build self-updating dashboards from live sources.
+    - maps: Geocode, POIs, routes, timezones via OpenStreetMap/OSRM.
+    - meeting-action-items: Turn meeting notes into cited decisions, owners, tickets.
+    - microsoft-office: Create, read, and edit Word, PowerPoint, and Excel files.
+    - pdf: PDF files: create, read, merge, fill, OCR, edit text.
+    - product-price-monitor: Watch product, flight, or listing prices; alert on target.
+    - property-listings: Present property and rental listings as desktop cards.
+    - property-listings-v2: Present property and rental listings as desktop cards.
+    - shop: Shop catalog search, checkout, order tracking, returns.
+    - shop-v2: Shop catalog search, checkout, order tracking, returns.
+    - siyuan: Query and edit a SiYuan knowledge base via its API.
+    - siyuan-v2: Query and edit a SiYuan knowledge base via its API.
+    - teams-meeting-pipeline: Teams meeting summaries, job replay, Graph subscriptions.
+    - telephony: Provision Twilio numbers, SMS/MMS, and AI outbound calls.
+    - telephony-v2: Provision Twilio numbers, SMS/MMS, and AI outbound calls.
+    - weekly-review-planning: Weekly reset: commitments, stalled work, next-week plan.
+  research:
+    - arxiv: Search arXiv papers by keyword, author, category, or ID.
+    - blogwatcher: Monitor blogs and RSS/Atom feeds via blogwatcher-cli tool.
+    - blogwatcher-v2: Monitor blogs and RSS/Atom feeds via blogwatcher-cli tool.
+    - competitor-news-monitor: Watch named companies for material news; cited digests.
+    - domain-intel: Passive recon of subdomains, SSL certs, WHOIS, and DNS.
+    - domain-intel-v2: Passive recon of subdomains, SSL certs, WHOIS, and DNS.
+    - drug-discovery: Drug discovery: ChEMBL search, drug-likeness, interactions.
+    - drug-discovery-v2: Drug discovery: ChEMBL search, drug-likeness, interactions.
+    - gitnexus-explorer: Serve an interactive codebase knowledge graph web UI.
+    - gitnexus-explorer-v2: Serve an interactive codebase knowledge graph web UI.
+    - grounded-citations: Ground answers and documents in cited, verifiable sources.
+    - llm-wiki: Karpathy's LLM Wiki: build/query interlinked markdown KB.
+    - llm-wiki-v2: Karpathy's LLM Wiki: build/query interlinked markdown KB.
+    - osint-investigation: Follow the money via public records and sanctions data.
+    - osint-investigation-v2: Follow the money via public records and sanctions data.
+    - parallel-cli: Agent-native web search, deep research, and enrichment.
+    - parallel-cli-v2: Agent-native web search, deep research, and enrichment.
+    - rss-feeds: Read RSS, Atom, JSON feeds; discover feeds behind a page.
+    - rss-feeds-v2: Read RSS, Atom, JSON feeds; discover feeds behind a page.
+    - scrapling: Scrape sites with stealth browsing and Cloudflare bypass.
+    - scrapling-v2: Scrape sites with stealth browsing and Cloudflare bypass.
+  security:
+    - 1password: Set up op CLI, sign in, and read or inject secrets.
+    - 1password-v2: Set up op CLI, sign in, and read or inject secrets.
+    - godmode: Jailbreak LLMs: Parseltongue, GODMODE, ULTRAPLINIAN.
+    - godmode-v2: Jailbreak LLMs: Parseltongue, GODMODE, ULTRAPLINIAN.
+    - oss-forensics: GitHub supply-chain forensics: recovery, IOCs, reporting.
+    - oss-forensics-v2: GitHub supply-chain forensics: recovery, IOCs, reporting.
+    - sherlock: Find accounts for a username across 400+ platforms.
+    - sherlock-v2: Find accounts for a username across 400+ platforms.
+    - unbroker: Remove your info from data-broker sites, by name or phone.
+    - unbroker-v2: Remove your info from data-broker sites, by name or phone.
+  smart-home:
+    - openhue: Control Philips Hue lights, scenes, rooms via OpenHue CLI.
+    - openhue-v2: Control Philips Hue lights, scenes, rooms via OpenHue CLI.
+  social-media:
+    - reddit-reading: Read Reddit: subreddits, search, threads, users. No browser.
+    - reddit-reading-v2: Read Reddit: subreddits, search, threads, users. No browser.
+    - xurl: X/Twitter via xurl CLI: raw post search, posting, DM, media.
+  software-development:
+    - ast-grep: AST-aware structural code search and rewrite via ast-grep.
+    - ast-grep-v2: AST-aware structural code search and rewrite via ast-grep.
+    - code-wiki: Generate wiki docs + Mermaid diagrams for any codebase.
+    - code-wiki-v2: Generate wiki docs + Mermaid diagrams for any codebase.
+    - codebase-inspection: Inspect codebases w/ pygount: LOC, languages, ratios.
+    - dogfood: Exploratory QA of web apps: find bugs, evidence, reports.
+    - github: GitHub via gh CLI: PRs, issues, reviews, repos, auth.
+    - grill-me: Adversarial plan interview before implementation.
+    - hermes-agent-skill-authoring: Author in-repo SKILL.md files: frontmatter and structure.
+    - inspecting-hermes-desktop-dom: Read the live Hermes desktop DOM/CSS over CDP.
+    - node-inspect-debugger: Debug Node.js via --inspect + Chrome DevTools Protocol CLI.
+    - requesting-code-review: Pre-commit review: security scan, quality gates, auto-fix.
+    - rest-graphql-debug: Debug REST/GraphQL APIs: status codes, auth, schemas, repro.
+    - simplify-code: Parallel 4-agent cleanup of recent code changes.
+    - spike: Throwaway experiments to validate an idea before build.
+    - subagent-driven-development: Execute plans via delegate_task subagents (2-stage review).
+    - systematic-debugging: 4-phase root cause debugging: understand bugs before fixing.
+    - test-driven-development: TDD: enforce RED-GREEN-REFACTOR, tests before code.
+  - blocked-page-recovery: Use when a fetch fails: 403/429, paywall, WAF, bot wall.
+  web-development:
+    - cloudflare-temporary-deploy: Deploy a Worker live, no account, via wrangler --temporary.
+    - har-derived-api-client: Record a site's XHR into a HAR, derive an HTTP client.
+    - page-agent: Embed an in-page natural-language GUI copilot in web apps.
+    - publish-site: Versioned site deploys to GitHub/Cloudflare/Netlify Pages.
+    - scrollcraft: Premium scroll-driven landing pages; scroll = timeline.
+  - yuanbao: Yuanbao (元宝) groups: @mention users, query info/members.
+</available_skills>
+
+Only proceed without loading a skill if genuinely none are relevant to the task.

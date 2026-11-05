@@ -1,0 +1,198 @@
+{
+  "seed": {
+    "bundled_total": 44,
+    "copied": 44
+  },
+  "points": [
+    {
+      "learned": 0,
+      "index_rows": 39,
+      "agent_created_records": 0,
+      "create_failures": [],
+      "tool_count": 20,
+      "toolsets": [
+        "browser-use",
+        "clarify",
+        "code_execution",
+        "connections",
+        "delegation",
+        "file",
+        "memory",
+        "skills",
+        "terminal",
+        "tts",
+        "web"
+      ],
+      "chars": 4311,
+      "tokens_hermes_estimate": 1084
+    },
+    {
+      "learned": 10,
+      "index_rows": 49,
+      "agent_created_records": 10,
+      "create_failures": [],
+      "tool_count": 20,
+      "toolsets": [
+        "browser-use",
+        "clarify",
+        "code_execution",
+        "connections",
+        "delegation",
+        "file",
+        "memory",
+        "skills",
+        "terminal",
+        "tts",
+        "web"
+      ],
+      "chars": 5088,
+      "tokens_hermes_estimate": 1278
+    },
+    {
+      "learned": 25,
+      "index_rows": 64,
+      "agent_created_records": 25,
+      "create_failures": [],
+      "tool_count": 20,
+      "toolsets": [
+        "browser-use",
+        "clarify",
+        "code_execution",
+        "connections",
+        "delegation",
+        "file",
+        "memory",
+        "skills",
+        "terminal",
+        "tts",
+        "web"
+      ],
+      "chars": 6223,
+      "tokens_hermes_estimate": 1566
+    },
+    {
+      "learned": 50,
+      "index_rows": 89,
+      "agent_created_records": 50,
+      "create_failures": [],
+      "tool_count": 20,
+      "toolsets": [
+        "browser-use",
+        "clarify",
+        "code_execution",
+        "connections",
+        "delegation",
+        "file",
+        "memory",
+        "skills",
+        "terminal",
+        "tts",
+        "web"
+      ],
+      "chars": 8152,
+      "tokens_hermes_estimate": 2048
+    },
+    {
+      "learned": 100,
+      "index_rows": 139,
+      "agent_created_records": 100,
+      "create_failures": [],
+      "tool_count": 20,
+      "toolsets": [
+        "browser-use",
+        "clarify",
+        "code_execution",
+        "connections",
+        "delegation",
+        "file",
+        "memory",
+        "skills",
+        "terminal",
+        "tts",
+        "web"
+      ],
+      "chars": 11959,
+      "tokens_hermes_estimate": 3000
+    },
+    {
+      "learned": 200,
+      "index_rows": 239,
+      "agent_created_records": 200,
+      "create_failures": [],
+      "tool_count": 20,
+      "toolsets": [
+        "browser-use",
+        "clarify",
+        "code_execution",
+        "connections",
+        "delegation",
+        "file",
+        "memory",
+        "skills",
+        "terminal",
+        "tts",
+        "web"
+      ],
+      "chars": 19860,
+      "tokens_hermes_estimate": 4980
+    },
+    {
+      "learned": 400,
+      "index_rows": 439,
+      "agent_created_records": 400,
+      "create_failures": [],
+      "tool_count": 20,
+      "toolsets": [
+        "browser-use",
+        "clarify",
+        "code_execution",
+        "connections",
+        "delegation",
+        "file",
+        "memory",
+        "skills",
+        "terminal",
+        "tts",
+        "web"
+      ],
+      "chars": 35661,
+      "tokens_hermes_estimate": 8940
+    }
+  ],
+  "memory": {
+    "accepted_entries": {
+      "memory": 18,
+      "user": 11
+    },
+    "first_refusal": {
+      "memory": "Memory at 2,173/2,200 chars; adding this entry (119 chars) would exceed the limit by 95 chars. Retry as ONE 'operations' batch that removes or shortens (patch) ",
+      "user": "Memory at 1,319/1,375 chars; adding this entry (119 chars) would exceed the limit by 66 chars. Retry as ONE 'operations' batch that removes or shortens (patch) "
+    },
+    "limits_chars": {
+      "memory": 2200,
+      "user": 1375
+    },
+    "memory_block": {
+      "chars": 2322,
+      "tokens_hermes_estimate": 632
+    },
+    "user_block": {
+      "chars": 1470,
+      "tokens_hermes_estimate": 417
+    }
+  },
+  "repeats_identical": 2,
+  "tokens_per_learned_skill": {
+    "tokens_hermes_estimate": 19.639
+  },
+  "conditions": {
+    "commit": "383f28428cbfc5b0dc29119275430bd40a9d8c75",
+    "dirty": false,
+    "python": "3.14.9",
+    "platform": "Linux-6.18.44-fc-v236-x86_64-with-glibc2.39",
+    "toolset": "hermes-cli",
+    "posture": "default (no focus-mode category demotion)",
+    "tokenizer": "hermes estimate only",
+    "learned_corpus": "optional-skills/, ungated only (106 skills, cycled -vN)"
+  }
+}
