@@ -61,7 +61,8 @@ What this shows:
   without prefix reuse) it is prefill on every call.
 - A learned skill pays for itself only if the tokens and turns it saves in the sessions that use it exceed
   about 20 tokens times every API call of every session that does not. That is the break-even line any
-  efficacy result (#96704 Arms B and C) has to clear.
+  efficacy result ([#96704](https://github.com/NousResearch/hermes-agent/issues/96704) Arms B and C) has
+  to clear.
 
 What it does not show: whether a larger library makes the agent choose worse. That needs task outcomes.
 
