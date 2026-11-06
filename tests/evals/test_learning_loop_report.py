@@ -1,5 +1,7 @@
 """The pilot report's arithmetic on rows with a known effect: carry beats fresh by exactly 0.25 on later episodes,
 episode 1 is at parity, and an infrastructure failure is listed but never scored."""
+import pytest
+
 from evals.learning_loop import report
 
 
@@ -35,6 +37,33 @@ def test_infrastructure_failures_are_listed_with_whether_their_rerun_was_scored(
          "rerun_scored": True}]
 
 
+def test_legacy_rows_do_not_imply_task_failure_or_benefit():
+    model = report.summarise(_rows())["models"]["m"]
+    assert model["later_episodes"]["oracle_reps"] == 0
+    assert model["later_episodes"]["oracle_pass_diff_mean"] is None
+    assert model["cells"]["carry/e2"]["oracle_n"] == 0
+    assert model["cells"]["carry/e2"]["oracle_pass_rate"] is None
+
+
+@pytest.mark.parametrize("unavailable", [
+    {"oracle_pass": None},
+    {"oracle_pass": "false"}, {"exit_code": 3},
+])
+def test_oracle_contrast_requires_two_explicit_outcomes_in_the_same_rep(unavailable):
+    rows = [_row("carry", "e1", 0, 1.0, 100), _row("fresh", "e1", 0, 1.0, 100)]
+    for rep in (0, 1):
+        rows += [{**_row("carry", "e2", rep, 0.75, 100), "protocol_valid": True, "oracle_pass": False},
+                 {**_row("fresh", "e2", rep, 0.5, 100), "protocol_valid": True, "oracle_pass": True}]
+    rows[-1].update(unavailable)
+    # Unmatched observations must not be pooled into an arm-level difference.
+    rows.append({**_row("carry", "e2", 2, 1.0, 100), "protocol_valid": True, "oracle_pass": True})
+    model = report.summarise(rows)["models"]["m"]
+    assert model["later_episodes"]["oracle_reps"] == 1
+    assert model["later_episodes"]["oracle_pass_diff_mean"] == -1.0
+    assert model["cells"]["fresh/e2"]["oracle_n"] == 1
+    assert model["cells"]["fresh/e2"]["oracle_pass_rate"] == 1.0
+
+
 def test_required_reps_grow_with_the_spread_of_paired_differences():
     tight = report._reps_needed([0.1, 0.11, 0.09], 0.10)
     wide = report._reps_needed([0.4, -0.2, 0.1], 0.10)
@@ -65,3 +94,34 @@ def test_the_repetition_is_the_unit_and_incomplete_repetitions_do_not_count():
     later = report.summarise(rows)["models"]["m"]["later_episodes"]
     assert later["score_diff_per_rep"] == [0.25, 0.25]
     assert later["score_diff_mean"] == 0.25 and later["score_diff_ci95"] == [0.25, 0.25]
+
+
+def test_oracle_uses_complete_repetitions_instead_of_pooled_episode_pairs():
+    rows = []
+    for rep in (0, 1, 2):
+        rows += [_row("carry", "e1", rep, 0.5, 900), _row("fresh", "e1", rep, 0.5, 900)]
+        # The complete reps each average +0.5, with opposite episode effects.
+        for ep in ("e2", "e3", "e4", "e5"):
+            if rep == 2 and ep != "e2":
+                continue  # this repetition is incomplete and must not count
+            outcome = rep == 2 or (ep in ("e2", "e3")) == (rep == 0)
+            rows += [{**_row("carry", ep, rep, float(outcome), 900), "oracle_pass": outcome,
+                      "protocol_valid": True},
+                     {**_row("fresh", ep, rep, 0.0, 900), "oracle_pass": False, "protocol_valid": True}]
+    later = report.summarise(rows)["models"]["m"]["later_episodes"]
+    assert later["oracle_pass_diff_mean"] == 0.5  # pooling would give 5/9
+    assert later["oracle_reps"] == 2
+    assert later["oracle_pass_diff_per_rep"] == [0.5, 0.5]
+    assert later["oracle_pass_diff_ci95"] == [0.5, 0.5]  # resample reps, not episodes
+
+
+@pytest.mark.parametrize("protocol_valid", [False, None])
+def test_oracle_keeps_explicit_outcomes_when_the_model_breaches_protocol(protocol_valid):
+    rows = [_row("carry", "e1", 0, 0.5, 900), _row("fresh", "e1", 0, 0.5, 900)]
+    rows += [{**_row("carry", "e2", 0, 0.5, 900), "oracle_pass": False, "protocol_valid": protocol_valid},
+             {**_row("fresh", "e2", 0, 1.0, 900), "oracle_pass": True, "protocol_valid": protocol_valid}]
+    model = report.summarise(rows)["models"]["m"]
+    assert model["later_episodes"]["oracle_pass_diff_mean"] == -1.0
+    assert model["cells"]["carry/e2"]["oracle_n"] == model["cells"]["fresh/e2"]["oracle_n"] == 1
+    assert model["cells"]["carry/e2"]["oracle_pass_rate"] == 0.0
+    assert model["cells"]["fresh/e2"]["oracle_pass_rate"] == 1.0
