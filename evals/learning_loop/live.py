@@ -53,6 +53,8 @@ def _parse() -> argparse.Namespace:
     parser.add_argument("--episodes", help="comma list of episode ids (default: the whole family, in order)")
     parser.add_argument("--budget-usd", type=float, help="stop before an episode once this much is spent")
     parser.add_argument("--max-iterations", type=int, default=40)
+    parser.add_argument("--episode-timeout", type=int, default=EPISODE_TIMEOUT_S,
+                        help="seconds before an episode counts as hung (raise it for CPU or older GPUs)")
     parser.add_argument("--provider", default="openrouter", help="openrouter, or custom for a local server")
     parser.add_argument("--disposable-host", action="store_true",
                         help="this machine is a throwaway sandbox (e.g. a Kaggle notebook): allow running as root")
@@ -120,7 +122,7 @@ def _worker(args: argparse.Namespace, key: str, route: dict, arm: str, rep: int,
         proc = subprocess.Popen(cmd, cwd=REPO, env=env, stdout=subprocess.DEVNULL, stderr=stderr,
                                 start_new_session=True)
         try:
-            return proc.wait(timeout=EPISODE_TIMEOUT_S)
+            return proc.wait(timeout=args.episode_timeout)
         except subprocess.TimeoutExpired:
             os.killpg(proc.pid, signal.SIGKILL)  # the agent's shell children go with it
             proc.wait(timeout=KILL_GRACE_S)
