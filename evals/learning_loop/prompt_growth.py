@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Learning-loop prompt growth: what each learned skill and memory entry costs every later API call.
+"""Prompt growth: what each learned skill and memory entry costs every later API call (the cost side of #96704).
 
 Offline and deterministic: no model calls, no network. Every number comes from Hermes' own code paths,
 run against a throwaway HERMES_HOME (and HOME) that is created per repeat and never the real one:
@@ -15,14 +15,14 @@ run against a throwaway HERMES_HOME (and HOME) that is created per repeat and ne
 
 Learned skills reuse the frontmatter and bodies of the shipped optional-skills/ that carry no platform,
 environment, app or toolset gate (real names, real descriptions already within the 60-char budget, real
-bodies), cycled with a -vN suffix past their count. Agent-written skills may differ in name length; the
-per-row cost is reported so it can be rescaled.
+bodies), cycled with a -vN suffix past their count. Agent-written skills may differ in name length, so the
+per-row cost is reported and can be rescaled.
 
 Tokens: Hermes' own estimate (agent.model_metadata.estimate_tokens_rough, what its budgets use) and,
 when tiktoken is importable, o200k_base. The rendered blocks are written to the output directory so
 any other tokenizer can be applied to exactly the same text.
 
-Usage (from the repo root):
+Usage (from the repo root, details in README.md beside this file):
   scripts/run-in-hermes-env python evals/learning_loop/prompt_growth.py --out evals/learning_loop/results/<label>
 """
 from __future__ import annotations
@@ -39,18 +39,20 @@ import tempfile
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[2]
+# This checkout first, so the measurement imports the code it sits in, never another installed copy.
+sys.path.insert(0, str(REPO))
 DEFAULT_CHECKPOINTS = (0, 10, 25, 50, 100, 200, 400)
-# Hard ceiling on learned skills per run: 400 already exceeds the 30-day curator archive horizon of any
-# realistic profile; the bound keeps a mistyped checkpoint from writing tens of thousands of files.
+# Hard ceiling on learned skills per run. 400 already exceeds the 30-day curator archive horizon of any
+# realistic profile, and the bound keeps a mistyped checkpoint from writing tens of thousands of files.
 MAX_LEARNED = 1000
-# Each worker is a short in-process build; anything slower than this is a hang, not a measurement.
+# Each worker is a short in-process build. Anything slower than this is a hang, not a measurement.
 WORKER_TIMEOUT_S = 600
-# rev-parse/status on a local checkout answer in milliseconds; a wait this long means a held index lock.
+# rev-parse/status on a local checkout answer in milliseconds. A wait this long means a held index lock.
 GIT_TIMEOUT_S = 30
 # A realistic memory entry: one fact of the length the memory tool's guidance asks for.
 MEMORY_ENTRY = ("User prefers {n} reviews in British English, deploys with make release, and keeps "
                 "secrets in the OS keychain (entry {n}).")
-MAX_MEMORY_ADDS = 200  # far above what a 2,200-char store accepts; ends the fill loop on a refusal bug
+MAX_MEMORY_ADDS = 200  # far above what a 2,200-char store accepts, so a refusal bug can't loop forever
 
 
 def _tokenizer():
@@ -158,10 +160,12 @@ def worker_grow_and_measure(target: int, dump: Path | None) -> dict:
     if dump is not None:
         dump.write_text(block, encoding="utf-8")
     rows = sum(1 for line in block.splitlines() if re.match(r"^\s+- ", line))
-    managed = sum(1 for name in skill_usage.load_usage() if skill_usage.is_agent_created(name))
+    # Curator-managed (created_by: agent) is what skill_manage records only for the review fork's writes, and
+    # what lets the curator archive them. A foreground create would be recorded created_by: learn instead.
+    managed = sum(1 for name in skill_usage.load_usage() if skill_usage.is_curator_managed(name))
     # Service-gated tools (check_fn) depend on what the host has configured, and requires_tools /
     # fallback_for_tools conditions follow them: the surface is part of the measurement's conditions.
-    return {"learned": target, "index_rows": rows, "agent_created_records": managed,
+    return {"learned": target, "index_rows": rows, "curator_managed_records": managed,
             "create_failures": failures, "tool_count": len(tools), "toolsets": sorted(sets), **_count(block)}
 
 
@@ -199,7 +203,7 @@ WORKERS = {
 
 def _spawn(mode: str, sandbox: Path, **kwargs) -> dict:
     """Run one worker in a fresh interpreter whose HERMES_HOME and HOME are the sandbox."""
-    # The dev environment's site-packages arrive on PYTHONPATH (scripts/run-in-hermes-env); keep them and
+    # The dev environment's site-packages arrive on PYTHONPATH (scripts/run-in-hermes-env). Keep them and
     # put this checkout first. Every other HERMES_* variable is dropped so the sandbox is the only home.
     env = {k: v for k, v in os.environ.items() if not k.startswith("HERMES_")}
     env.update(HERMES_HOME=str(sandbox / "hermes-home"), HOME=str(sandbox / "home"),
@@ -267,7 +271,7 @@ def render_markdown(result: dict) -> str:
         "## Skills index vs learned skills", "", *lines, "",
         f"Marginal cost per learned skill (least squares): {slopes}", "",
         "## Memory blocks at capacity", "",
-        f"Accepted entries before the first refusal: {mem['accepted_entries']}; limits {mem['limits_chars']} chars.",
+        f"Accepted entries before the first refusal: {mem['accepted_entries']}, limits {mem['limits_chars']} chars.",
         f"MEMORY.md block: {mem['memory_block']}", f"USER.md block: {mem['user_block']}", "",
         "## Conditions", "", "```json", json.dumps(result["conditions"], indent=2), "```", ""])
 
@@ -276,7 +280,7 @@ def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__.split("\n", 1)[0])
     ap.add_argument("--out", type=Path, help="directory for results.json, results.md and the rendered blocks")
     ap.add_argument("--checkpoints", default=",".join(map(str, DEFAULT_CHECKPOINTS)))
-    ap.add_argument("--repeats", type=int, default=2, help="full independent runs; all must agree exactly")
+    ap.add_argument("--repeats", type=int, default=2, help="full independent runs, which must all agree exactly")
     ap.add_argument("--keep", action="store_true", help="keep the first run's sandbox and print its path")
     ap.add_argument("--worker", choices=sorted(WORKERS), help=argparse.SUPPRESS)
     ap.add_argument("--target", type=int, help=argparse.SUPPRESS)
@@ -299,15 +303,15 @@ def main() -> int:
     if failed := [f for p in runs[0]["points"] for f in p["create_failures"]]:
         sys.stderr.write(f"{len(failed)} learned-skill create(s) failed, first: {failed[0]}\n")
         return 1
-    # A staged (write_approval) or silently dropped write "succeeds" without reaching the index; the row
+    # A staged (write_approval) or silently dropped write "succeeds" without reaching the index. The row
     # count is the witness that every learned skill is really listed.
     base = runs[0]["points"][0]
     if drift := [p["learned"] for p in runs[0]["points"]
                  if p["index_rows"] - base["index_rows"] != p["learned"] - base["learned"]
-                 or p["agent_created_records"] != p["learned"]]:
-        sys.stderr.write(f"index rows or agent-created records did not grow one per learned skill at {drift}\n")
+                 or p["curator_managed_records"] != p["learned"]]:
+        sys.stderr.write(f"index rows or curator-managed records did not grow one per learned skill at {drift}\n")
         for p in runs[0]["points"]:
-            sys.stderr.write(f"  learned={p['learned']} rows={p['index_rows']} agent_created={p['agent_created_records']}\n")
+            sys.stderr.write(f"  learned={p['learned']} rows={p['index_rows']} managed={p['curator_managed_records']}\n")
         return 1
     result = {**runs[0], "repeats_identical": len(runs),
               "tokens_per_learned_skill": {k: _slope(runs[0]["points"], k)

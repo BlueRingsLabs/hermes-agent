@@ -71,10 +71,13 @@ What it does not show: whether a larger library makes the agent choose worse. Th
 
 - Two full runs in fresh sandboxes must agree exactly; the script exits non-zero otherwise.
 - Every run checks three invariants: every create succeeded, the index grew by exactly one row per
-  learned skill, and the usage sidecar records every learned skill as agent-created.
+  learned skill, and every learned skill is curator-managed (`created_by: agent`, which `skill_manage`
+  records only for the review fork's writes, `tools/skill_manager_tool.py:775`).
 - Those invariants were shown to fail. With `skills.write_approval: true`, every create "succeeds" while
   only staging the write, and the row invariant fails. With an `environments: [s6]` skill in the corpus,
-  on a host without s6, the row invariant fails too; that is why the corpus excludes gated skills.
+  on a host without s6, the row invariant fails too, which is why the corpus excludes gated skills.
+  Without the review fork's write origin, the creates are recorded `created_by: learn` and the
+  curator-managed invariant fails.
 - The rendered blocks are committed beside the numbers, so any tokenizer can be applied to the same text.
 - Nothing is written outside the sandbox: the worker's `HOME` stays empty and the real Hermes home is
   never read or written.
