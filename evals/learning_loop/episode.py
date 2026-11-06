@@ -34,6 +34,7 @@ def _parse() -> argparse.Namespace:
     parser.add_argument("--rep", type=int, required=True)
     parser.add_argument("--provider", default="openrouter", help="openrouter, or custom for a local server")
     parser.add_argument("--max-iterations", type=int, default=40)
+    parser.add_argument("--model-revision", default="", help="the exact weights and engine, e.g. a GGUF sha256")
     return parser.parse_args()
 
 
@@ -64,11 +65,14 @@ def _write_config(home: Path, model: str, provider: str, base_url: str) -> None:
 
 
 def _learning_state(home: Path) -> dict:
-    """What a later session can inherit: agent-created skills and the two memory files."""
+    """What a later session can inherit: agent-created skills, the review fork's (curator-managed) ones among
+    them, and the two memory files."""
     from tools import skill_usage
     memories = home / "memories"
     size = lambda name: len((memories / name).read_text(encoding="utf-8")) if (memories / name).exists() else 0
-    return {"agent_skills": sorted(n for n in skill_usage.load_usage() if skill_usage.is_agent_created(n)),
+    usage = skill_usage.load_usage()
+    return {"agent_skills": sorted(n for n in usage if skill_usage.is_agent_created(n)),
+            "learned_skills": sorted(n for n in usage if skill_usage.is_curator_managed(n)),
             "memory_chars": size("MEMORY.md"), "user_chars": size("USER.md")}
 
 
@@ -104,16 +108,43 @@ def _run_agent(args: argparse.Namespace, prompt: str) -> tuple[object, dict, str
         return agent, {}, f"{type(error).__name__}: {error}"[:500]
 
 
+def _attribution(agent, convo: dict, messages: list[dict], graded: dict, episode, before: dict,
+                 ledgers: tuple[list[dict], list[dict]], skills_at_start: str, error: str | None) -> dict:
+    """The review's three stages and each carried skill's four, plus the digests that pin what was compared."""
+    from evals.learning_loop import attribution as at, family_conventions as fam
+    system_prompt = getattr(agent, "_cached_system_prompt", None) or ""
+    offered = at.offered_skills(system_prompt)
+    trigger = at.review_eligibility(messages, int(getattr(agent, "_skill_nudge_interval", 0) or 0),
+                                    "skill_manage" in (getattr(agent, "valid_tool_names", None) or ()))
+    checks = graded["checks"]
+    adhered = all(checks[c] for c in fam.CONVENTION_CHECKS) and at.ran_command(messages, fam.CHECK_COMMAND)
+    effective = all(checks[c] for c in fam.ORACLE_CHECKS)
+    return {
+        "review_eligible": trigger["eligible"], "review_trigger": trigger,
+        "review_wrote": at.new_writes(*ledgers, at.REVIEW_ACTOR),
+        "foreground_wrote": at.new_writes(*ledgers, at.FOREGROUND_ACTOR),
+        "skills_offered": offered,
+        "skill_chain": at.skill_chain(before["learned_skills"], offered, at.viewed_skills(messages), adhered, effective),
+        "adhered": adhered, "oracle_pass": effective,
+        "protocol_valid": error is None and bool(convo.get("completed"))
+        and not any(convo.get(k) for k in ("failed", "partial", "interrupted")),
+        "turn_exit_reason": convo.get("turn_exit_reason"),
+        "digests": {"suite": at.digest(Path(fam.__file__).read_bytes()), "gold": at.digest(episode.hidden_test),
+                    "skills": skills_at_start, "prompt_policy": at.digest(system_prompt) if system_prompt else None},
+    }
+
+
 def main() -> int:
     args = _parse()
     cell = Path(args.cell)
     home, workspace = _sandbox(cell)
     _write_config(home, args.model, args.provider, args.base_url)
-    from evals.learning_loop import audit, family_conventions as fam
+    from evals.learning_loop import attribution as at, audit, family_conventions as fam
     capture = audit.attach()
     episode = next(e for e in fam.EPISODES if e.id == args.episode)
     base = (cell / "base-commit").read_text(encoding="utf-8").strip()
     before = _learning_state(home)
+    ledger_before, skills_at_start = at.ledger_rows(home), at.skills_digest(home)
     prompt = f"{episode.prompt}\n\n(The project is the git repository at {workspace}.)"
     started = time.monotonic()
     agent, convo, error = _run_agent(args, prompt)
@@ -121,16 +152,19 @@ def main() -> int:
     wall = round(time.monotonic() - started, 1)
     graded = fam.grade(workspace, episode, base)
     calls = audit.summarise(capture.lines, args.upstream)
-    after = _learning_state(home)
+    after, ledger_after = _learning_state(home), at.ledger_rows(home)
     messages = convo.get("messages") or getattr(agent, "messages", []) or []
     record = {
-        "model": args.model, "arm": args.arm, "rep": args.rep, "episode": args.episode, "error": error,
+        "record_version": 2, "model": args.model, "model_revision": args.model_revision or args.model,
+        "arm": args.arm, "rep": args.rep, "episode": args.episode, "error": error,
         **graded, "wall_s": wall, "review_barrier": barrier, "audit": calls,
         "review_fired": bool(calls["reviews"]), "review_results": [r["result"] for r in calls["reviews"]],
         "main_tokens": {"prompt": getattr(agent, "session_prompt_tokens", None),
                         "completion": getattr(agent, "session_completion_tokens", None)},
         "tool_counts": _tool_counts(messages), "learning_before": before, "learning_after": after,
         "skills_created": sorted(set(after["agent_skills"]) - set(before["agent_skills"])),
+        **_attribution(agent, convo, messages, graded, episode, before, (ledger_before, ledger_after),
+                       skills_at_start, error),
     }
     out = Path(args.out)
     out.write_text(json.dumps(record, indent=1, default=str) + "\n", encoding="utf-8")

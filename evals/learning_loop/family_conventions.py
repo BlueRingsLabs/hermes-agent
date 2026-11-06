@@ -241,6 +241,13 @@ def _commit_follows_rules(workspace: Path, base: str, area: str) -> bool:
     return head != base and clean and re.fullmatch(rf"{area}: [a-z0-9].{{4,69}}", subject) is not None
 
 
+# What a learned skill about this project can be held to mechanically (adherence: its rules, and running the
+# tests the way CONTRIBUTING.md says), against the independent oracle for the change itself.
+CONVENTION_CHECKS = ("commit", "changelog")
+CHECK_COMMAND = "./scripts/check"
+ORACLE_CHECKS = ("hidden_tests", "suite_green")
+
+
 def grade(workspace: Path, episode: Episode, base: str) -> dict:
     """Four programmatic checks; the episode passes only if all four hold."""
     checks = {

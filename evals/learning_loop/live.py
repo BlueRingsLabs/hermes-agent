@@ -56,6 +56,8 @@ def _parse() -> argparse.Namespace:
     parser.add_argument("--episode-timeout", type=int, default=EPISODE_TIMEOUT_S,
                         help="seconds before an episode counts as hung (raise it for CPU or older GPUs)")
     parser.add_argument("--provider", default="openrouter", help="openrouter, or custom for a local server")
+    parser.add_argument("--model-revision", default="",
+                        help="the exact weights and engine served (e.g. the GGUF sha256), recorded on every row")
     parser.add_argument("--disposable-host", action="store_true",
                         help="this machine is a throwaway sandbox (e.g. a Kaggle notebook): allow running as root")
     parser.add_argument("--base-url", default=preflight.API, help=argparse.SUPPRESS)
@@ -115,7 +117,7 @@ def _worker(args: argparse.Namespace, key: str, route: dict, arm: str, rep: int,
     cmd = [sys.executable, str(REPO / "evals/learning_loop/episode.py"), "--cell", str(cell), "--episode", episode,
            "--model", route["model"], "--only", route["only"], "--upstream", route["provider_name"],
            "--base-url", args.base_url, "--provider", args.provider, "--arm", arm, "--rep", str(rep), "--out", str(out),
-           "--max-iterations", str(args.max_iterations)]
+           "--max-iterations", str(args.max_iterations), "--model-revision", args.model_revision]
     env = {**os.environ, "OPENROUTER_API_KEY": key,
            "PYTHONPATH": os.pathsep.join([str(REPO), *filter(None, [os.environ.get("PYTHONPATH")])])}
     with (cell / f"{episode}.stderr.log").open("w", encoding="utf-8") as stderr:

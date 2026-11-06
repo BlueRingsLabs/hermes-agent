@@ -59,7 +59,17 @@ def _cell_summary(rows: list[dict]) -> dict:
             "score": _mean([r.get("score", 0.0) for r in rows]),
             "prompt_tokens": _mean([t for r in rows if (t := _prompt_tokens(r)) is not None]),
             "review_fired": _mean([float(r.get("review_fired", False)) for r in rows]),
-            "cost_usd": _mean([r["cost_usd"] for r in rows if isinstance(r.get("cost_usd"), (int, float))])}
+            "cost_usd": _mean([r["cost_usd"] for r in rows if isinstance(r.get("cost_usd"), (int, float))]),
+            "attribution": _attribution_summary(rows)}
+
+
+def _attribution_summary(rows: list[dict]) -> dict:
+    """Share of rows at each review stage, and of carried skills at each skill stage (#96704's chain)."""
+    chain = [s for r in rows for s in r.get("skill_chain") or []]
+    share = lambda items, key: _mean([float(bool(i.get(key))) for i in items])
+    return {"review_eligible": share(rows, "review_eligible"), "review_fired": share(rows, "review_fired"),
+            "review_wrote": share(rows, "review_wrote"), "carried_skills": len(chain),
+            **{f"skill_{stage}": share(chain, stage) for stage in ("eligible", "activated", "adhered", "effective")}}
 
 
 def _paired(scored: list[dict], model: str, episode: str, metric) -> list[float]:
@@ -105,6 +115,13 @@ def render(summary: dict) -> str:
         for cell, s in data["cells"].items():
             lines.append(f"| {cell} | {s['n']} | {s['pass_rate']} | {s['score']} | {s['prompt_tokens']} | "
                          f"{s['review_fired']} | {s['cost_usd']} |")
+        lines += ["", "| arm/episode | review eligible | fired | wrote | carried skills | listed | loaded | adhered "
+                  "| oracle |", "|---|---:|---:|---:|---:|---:|---:|---:|---:|"]
+        for cell, s in data["cells"].items():
+            a = s["attribution"]
+            lines.append(f"| {cell} | {a['review_eligible']} | {a['review_fired']} | {a['review_wrote']} | "
+                         f"{a['carried_skills']} | {a['skill_eligible']} | {a['skill_activated']} | "
+                         f"{a['skill_adhered']} | {a['skill_effective']} |")
         later = data["later_episodes"]
         lines += ["", f"- Episode 1 parity (carry minus fresh score, per rep): {data['parity_episode_1']['score_diff']}",
                   f"- Later episodes, carry minus fresh: score {later['score_diff_mean']} (95% CI "

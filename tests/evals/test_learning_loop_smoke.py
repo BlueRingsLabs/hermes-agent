@@ -168,6 +168,21 @@ def test_two_episodes_per_arm_wire_learning_through_the_real_agent(provider, tmp
         assert first["exit_code"] == 0 and first["passed"], first.get("checks")
         assert first["review_fired"] and "invoicer-workflow" in first["skills_created"], first["audit"]
         assert first["audit"]["route_ok"] and first["audit"]["calls_main"] >= len(EPISODE_1)
+        # The fork's create is the review's write, by the ledger's actor, and the solution followed the rules.
+        assert first["review_wrote"] == [{"action": "create", "skill": "invoicer-workflow"}], first["review_wrote"]
+        assert first["foreground_wrote"] == [] and "invoicer-workflow" in first["learning_after"]["learned_skills"]
+        assert first["protocol_valid"] and first["adhered"] and first["oracle_pass"] and first["skill_chain"] == []
+    # The replayed trigger agrees with Hermes' own on every row: twelve tool turns are eligible and fire, a
+    # two-call episode is neither.
+    assert all(r["review_eligible"] == r["review_fired"] for r in rows.values()), [
+        (k, r["review_trigger"]) for k, r in rows.items()]
+    # Episode 1 starts from the same skills in both arms, episode 2 differs only by what carry kept.
+    assert rows[("carry", "percent_of")]["digests"]["skills"] == rows[("fresh", "percent_of")]["digests"]["skills"]
+    carried, reset = rows[("carry", "skip_empty_lines")], rows[("fresh", "skip_empty_lines")]
+    assert carried["digests"]["skills"] != reset["digests"]["skills"]
+    assert "invoicer-workflow" in carried["skills_offered"] and "invoicer-workflow" not in reset["skills_offered"]
+    assert carried["skill_chain"] == [{"skill": "invoicer-workflow", "eligible": True, "activated": False,
+                                       "adhered": False, "effective": False}] and reset["skill_chain"] == []
     # On OpenRouter every chat request, the review fork's included, carries the pin; a local server gets none.
     sent = [s["provider"] for s in _Provider.seen]
     expected = {"only": ["fake-up"], "require_parameters": True} if mode == "openrouter" else None
