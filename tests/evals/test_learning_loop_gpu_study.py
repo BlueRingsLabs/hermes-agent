@@ -36,6 +36,24 @@ def test_the_engine_refuses_a_checkout_that_pins_another_llama_cpp(tmp_path, mon
     assert not (tmp_path / "study").exists()  # refused before anything was downloaded
 
 
+def test_a_driver_older_than_the_prebuilt_toolkit_builds_the_engine_from_source(tmp_path, monkeypatch):
+    (tmp_path / "pm").mkdir()
+    url = "https://example.invalid/llama-b11671-bin-ubuntu-cuda-13.4-x64.tar.gz"
+    lock = {"packages": {"llamacpp-cuda": {"version": "11671", "artifacts": {"linux-x64": [{"url": url, "sha256": "0"}]}}}}
+    (tmp_path / "pm" / "lock.json").write_text(json.dumps(lock), encoding="utf-8")
+    monkeypatch.setattr(gpu_study, "REPO", tmp_path)
+    smi = "| NVIDIA-SMI 580.82.07   Driver Version: 580.82.07   CUDA Version: 13.0 |"  # Colab's A100
+    monkeypatch.setattr(gpu_study, "_run", lambda cmd, timeout: subprocess.CompletedProcess(cmd, 0, smi, ""))
+    monkeypatch.setattr(gpu_study, "download", lambda *a, **k: pytest.fail("fetched a build this driver cannot run"))
+
+    def build(target):
+        raise SystemExit("building from source")
+
+    monkeypatch.setattr(gpu_study, "_build_from_source", build)
+    with pytest.raises(SystemExit, match="building from source"):
+        gpu_study.cmd_engine(argparse.Namespace())
+
+
 def test_the_isolation_check_fails_closed():
     def answers(*codes):
         replies = iter(codes)

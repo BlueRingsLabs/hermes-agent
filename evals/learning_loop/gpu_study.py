@@ -23,6 +23,7 @@ import argparse
 import hashlib
 import json
 import os
+import re
 import shlex
 import shutil
 import subprocess
@@ -122,7 +123,17 @@ def _cuda_devices(binary: Path, engine_dir: Path) -> list[str]:
     return [line.strip() for line in (proc.stdout + proc.stderr).splitlines() if line.strip().startswith("CUDA")]
 
 
-def _build_from_source(target: Path) -> Path:
+def _cuda_version(text: str) -> tuple[int, int]:
+    """The first "CUDA Version: X.Y" (nvidia-smi) or "cuda-X.Y" (a release name) in *text*, (0, 0) if none."""
+    match = re.search(r"(?:CUDA Version:\s*|cuda-)(\d+)\.(\d+)", text)
+    return (int(match[1]), int(match[2])) if match else (0, 0)
+
+
+def _build_from_source(target: Path) -> tuple[Path, str]:
+    nvcc = shutil.which("nvcc") or "/usr/local/cuda/bin/nvcc"
+    if not Path(nvcc).exists():
+        raise SystemExit("no CUDA toolkit (nvcc) here to build llama.cpp with")
+    toolkit = re.search(r"release (\d+\.\d+)", _run([nvcc, "--version"], PROBE_TIMEOUT_S).stdout)
     src = target / "llama.cpp"
     if not src.exists():
         _run(["git", "clone", "--depth", "1", "--branch", ENGINE_TAG, ENGINE_SOURCE, src], GIT_TIMEOUT_S)
@@ -131,12 +142,13 @@ def _build_from_source(target: Path) -> Path:
         raise SystemExit(f"llama.cpp {ENGINE_TAG} resolved to {head}, not the pinned {ENGINE_COMMIT}")
     archs = ";".join(sorted({g["compute_cap"].replace(".", "") for g in _gpu_facts()}))
     for cmd in (["cmake", "-S", src, "-B", src / "build", "-DGGML_CUDA=ON", f"-DCMAKE_CUDA_ARCHITECTURES={archs}",
-                 "-DCMAKE_BUILD_TYPE=Release", "-DLLAMA_CURL=OFF"],
+                 f"-DCMAKE_CUDA_COMPILER={nvcc}", "-DCMAKE_BUILD_TYPE=Release", "-DLLAMA_CURL=OFF"],
                 ["cmake", "--build", src / "build", "--target", "llama-server", "-j", str(os.cpu_count() or 4)]):
         proc = _run(cmd, BUILD_TIMEOUT_S)
         if proc.returncode != 0:
             raise SystemExit(f"building llama.cpp failed:\n{(proc.stdout + proc.stderr)[-3000:]}")
-    return src / "build" / "bin" / "llama-server"
+    how = f"built from {ENGINE_SOURCE} at {ENGINE_COMMIT} with CUDA {toolkit[1] if toolkit else '?'} for sm_{archs}"
+    return src / "build" / "bin" / "llama-server", how
 
 
 def _unpack(artifact: Path, into: Path) -> None:
@@ -158,19 +170,26 @@ def cmd_engine(_args: argparse.Namespace) -> dict:
     if f"b{package['version']}" != ENGINE_TAG:  # a later checkout could pin another engine
         raise SystemExit(f"pm/lock.json pins llama.cpp b{package['version']}, not the pre-registered {ENGINE_TAG}")
     prebuilt, artifacts = STUDY_ROOT / "engine" / "prebuilt", package["artifacts"]["linux-x64"]
-    for artifact in artifacts:
-        local = STUDY_ROOT / "downloads" / artifact["url"].rsplit("/", 1)[1]
-        download(artifact["url"], local, artifact["sha256"])
-        _unpack(local, prebuilt)
-    binary, how = next(prebuilt.rglob("llama-server"), None), "prebuilt (pm/lock.json)"
-    engine_dir = prebuilt
+    driver, built_with = _cuda_version(_run(["nvidia-smi"], PROBE_TIMEOUT_S).stdout), _cuda_version(artifacts[0]["url"])
+    # A driver older than the build's toolkit runs it only where the build ships the card's own machine code, since
+    # it cannot compile the build's PTX. On Colab's A100 (driver 580.82, CUDA 13.0) this CUDA 13.4 build listed the
+    # card, then aborted loading the model: "the provided PTX was compiled with an unsupported toolchain".
+    binary = None
+    if driver >= built_with:
+        for artifact in artifacts:
+            local = STUDY_ROOT / "downloads" / artifact["url"].rsplit("/", 1)[1]
+            download(artifact["url"], local, artifact["sha256"])
+            _unpack(local, prebuilt)
+        binary = next(prebuilt.rglob("llama-server"), None)
+    how, engine_dir = "prebuilt (pm/lock.json)", prebuilt
     if binary is None or not _cuda_devices(binary, prebuilt):
         engine_dir, artifacts = STUDY_ROOT / "engine" / "source", []
-        binary, how = _build_from_source(engine_dir), f"built from {ENGINE_SOURCE} at {ENGINE_COMMIT}"
+        binary, how = _build_from_source(engine_dir)
     devices = _cuda_devices(binary, engine_dir)
     if not devices:
         raise SystemExit("the engine sees no CUDA device")
     state = {"tag": ENGINE_TAG, "commit": ENGINE_COMMIT, "how": how, "artifacts": artifacts,
+             "driver_cuda": ".".join(map(str, driver)), "prebuilt_cuda": ".".join(map(str, built_with)),
              "binary": str(binary), "engine_dir": str(engine_dir), "sha256": sha256_of(binary),
              "devices": devices, "gpus": _gpu_facts()}
     _save_state("engine", state)
