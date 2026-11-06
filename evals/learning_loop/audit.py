@@ -66,4 +66,6 @@ def summarise(lines: list[tuple[str, str]], expected_upstream: str) -> dict:
             "tokens": totals, "upstreams": upstreams,
             "off_route": [u for u in upstreams if u != expected_upstream],
             "route_ok": bool(calls) and upstreams == [expected_upstream],
+            "max_input": {role: max((c["input"] for c in calls if c["role"] == role), default=0)
+                          for role in ("main", "review")},
             "reviews": reviews}

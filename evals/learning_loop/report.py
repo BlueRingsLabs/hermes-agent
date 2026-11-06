@@ -4,11 +4,11 @@ needs. Reads a run directory's results.jsonl, writes report.md and report.json n
 
   python3 evals/learning_loop/report.py evals/learning_loop/runs/pilot
 
-Rows with a non-zero exit code are infrastructure failures: counted and listed, never scored. Differences are
-carry minus fresh, paired by rep (the same rep index ran the same episodes in both arms), with a bootstrap 95%
-interval over reps. Required reps use the normal approximation n = ((z_a + z_b) * sd / delta)^2 for a paired
-difference, alpha 0.05 two-sided and power 0.8; with three pilot reps the sd itself is rough, so treat it as a
-floor to round up, not a promise.
+Rows with a non-zero exit code are infrastructure failures: listed, with whether the episode's rerun was scored,
+and never scored themselves. Differences are carry minus fresh, paired by rep (the same rep index ran the same
+episodes in both arms), with a bootstrap 95% interval over reps. Required reps use the normal approximation
+n = ((z_a + z_b) * sd / delta)^2 for a paired difference, alpha 0.05 two-sided and power 0.8. With three pilot reps
+the sd itself is rough, so treat it as a floor to round up, not a promise.
 """
 from __future__ import annotations
 
@@ -26,8 +26,14 @@ BOOTSTRAP_DRAWS, SEED = 2000, 20261105
 
 
 def _rows(run: Path) -> list[dict]:
-    lines = (run / "results.jsonl").read_text(encoding="utf-8").splitlines()
-    return [json.loads(line) for line in lines if line.strip()]
+    """Complete rows only: a line cut off when a machine went away mid-write is not a result."""
+    rows = []
+    for line in (run / "results.jsonl").read_text(encoding="utf-8").splitlines():
+        try:
+            rows.append(json.loads(line))
+        except ValueError:
+            continue
+    return rows
 
 
 def _mean(values: list[float]) -> float | None:
@@ -72,6 +78,23 @@ def _attribution_summary(rows: list[dict]) -> dict:
             **{f"skill_{stage}": share(chain, stage) for stage in ("eligible", "activated", "adhered", "effective")}}
 
 
+def _per_rep(scored: list[dict], model: str, episodes: list[str], metric) -> list[float]:
+    """One carry-minus-fresh number per repetition: the mean of its paired differences over *episodes*.
+
+    A cell's episodes share one evolving home, so they are not independent. The repetition is the unit the
+    interval resamples, and a repetition counts only when every one of *episodes* was scored in both arms."""
+    out = []
+    for rep in sorted({r["rep"] for r in scored if r["model"] == model}):
+        diffs = []
+        for episode in episodes:
+            pair = {r["arm"]: metric(r) for r in scored if (r["model"], r["rep"], r["episode"]) == (model, rep, episode)}
+            if pair.get("carry") is not None and pair.get("fresh") is not None:
+                diffs.append(pair["carry"] - pair["fresh"])
+        if diffs and len(diffs) == len(episodes):
+            out.append(statistics.fmean(diffs))
+    return out
+
+
 def _paired(scored: list[dict], model: str, episode: str, metric) -> list[float]:
     by_arm = {arm: {r["rep"]: metric(r) for r in scored if (r["model"], r["arm"], r["episode"]) == (model, arm, episode)}
               for arm in ("carry", "fresh")}
@@ -84,20 +107,23 @@ def summarise(rows: list[dict]) -> dict:
     scored = [r for r in rows if r.get("exit_code") == 0]
     episodes = list(dict.fromkeys(r["episode"] for r in rows))
     models = list(dict.fromkeys(r["model"] for r in rows))
-    out = {"infra_failures": [{k: r.get(k) for k in ("model", "arm", "rep", "episode", "exit_code", "error")}
+    rerun = {(r["model"], r["arm"], r["rep"], r["episode"]) for r in scored}
+    out = {"infra_failures": [{**{k: r.get(k) for k in ("model", "arm", "rep", "episode", "exit_code", "error")},
+                               "rerun_scored": (r["model"], r["arm"], r["rep"], r["episode"]) in rerun}
                               for r in rows if r.get("exit_code") != 0], "models": {}}
     for model in models:
         cells = {f"{arm}/{ep}": _cell_summary([r for r in scored if (r["model"], r["arm"], r["episode"]) == (model, arm, ep)])
                  for ep in episodes for arm in ("carry", "fresh")}
         later = episodes[1:]
-        score_d = [d for ep in later for d in _paired(scored, model, ep, lambda r: r.get("score"))]
-        token_d = [d for ep in later for d in _paired(scored, model, ep, _prompt_tokens)]
+        score_d = _per_rep(scored, model, later, lambda r: r.get("score"))
+        token_d = _per_rep(scored, model, later, _prompt_tokens)
         fresh_tokens = _mean([t for r in scored if r["model"] == model and r["arm"] == "fresh"
                               and r["episode"] in later and (t := _prompt_tokens(r)) is not None])
         out["models"][model] = {
             "cells": cells,
             "parity_episode_1": {"score_diff": _paired(scored, model, episodes[0], lambda r: r.get("score"))},
-            "later_episodes": {"score_diff_mean": _mean(score_d), "score_diff_ci95": _ci(score_d),
+            "later_episodes": {"score_diff_per_rep": [round(d, 4) for d in score_d],
+                               "score_diff_mean": _mean(score_d), "score_diff_ci95": _ci(score_d),
                                "prompt_token_diff_mean": _mean(token_d), "prompt_token_diff_ci95": _ci(token_d)},
             "cost_per_episode_usd": _mean([r["cost_usd"] for r in scored if r["model"] == model
                                            and isinstance(r.get("cost_usd"), (int, float))]),

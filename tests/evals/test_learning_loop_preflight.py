@@ -5,6 +5,7 @@ refuse is exercised: a key without a credit limit, a call served by another prov
 without the tool call, and the account-privacy 404. The key must never reach any output.
 """
 import json
+import socket
 import threading
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import parse_qs, urlparse
@@ -127,3 +128,12 @@ def test_local_server_without_the_tool_call_fails(stub, capsys):
     _OpenRouterStub.scenario = {"no_tool_call": {"local/qwen"}}
     check = preflight.check_local(base, KEY, "local/qwen")
     assert not check["ok"] and "tool call" in check["detail"]
+
+
+def test_a_local_server_counts_as_gone_only_when_it_stops_answering(stub, capsys):
+    assert preflight.server_answers(stub.base, KEY)  # any status is an answer, here a 404 for /health
+    closed = socket.socket()
+    closed.bind(("127.0.0.1", 0))
+    port = closed.getsockname()[1]
+    closed.close()
+    assert not preflight.server_answers(f"http://127.0.0.1:{port}/v1", KEY)

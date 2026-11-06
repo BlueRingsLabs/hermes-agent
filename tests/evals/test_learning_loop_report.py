@@ -26,9 +26,13 @@ def test_carry_minus_fresh_is_paired_by_rep_and_infra_rows_are_not_scored():
     assert model["cells"]["carry/e2"]["n"] == 3  # the exit-3 row is excluded
 
 
-def test_infrastructure_failures_are_listed():
-    failures = report.summarise(_rows())["infra_failures"]
-    assert failures == [{"model": "m", "arm": "carry", "rep": 3, "episode": "e2", "exit_code": 3, "error": None}]
+def test_infrastructure_failures_are_listed_with_whether_their_rerun_was_scored():
+    failures = report.summarise([*_rows(), _row("carry", "e2", 0, 0.0, 0, exit_code=124)])["infra_failures"]
+    assert failures == [
+        {"model": "m", "arm": "carry", "rep": 3, "episode": "e2", "exit_code": 3, "error": None,
+         "rerun_scored": False},
+        {"model": "m", "arm": "carry", "rep": 0, "episode": "e2", "exit_code": 124, "error": None,
+         "rerun_scored": True}]
 
 
 def test_required_reps_grow_with_the_spread_of_paired_differences():
@@ -49,3 +53,15 @@ def test_attribution_stages_are_reported_per_cell():
         "review_eligible": 0.5, "review_fired": 0.5, "review_wrote": 0.5, "carried_skills": 2,
         "skill_eligible": 1.0, "skill_activated": 0.5, "skill_adhered": 0.5, "skill_effective": 0.0}
     assert "| carry/e2 | 0.5 | 0.5 | 0.5 | 2 | 1.0 | 0.5 | 0.5 | 0.0 |" in report.render(summary)
+
+
+def test_the_repetition_is_the_unit_and_incomplete_repetitions_do_not_count():
+    rows = []
+    for rep, (e2, e3) in enumerate(((0.5, 0.0), (0.25, 0.25))):  # each repetition averages to +0.25
+        rows += [_row("carry", "e1", rep, 0.5, 900), _row("fresh", "e1", rep, 0.5, 900),
+                 _row("carry", "e2", rep, 0.5 + e2, 900), _row("fresh", "e2", rep, 0.5, 900),
+                 _row("carry", "e3", rep, 0.5 + e3, 900), _row("fresh", "e3", rep, 0.5, 900)]
+    rows += [_row("carry", "e2", 2, 1.0, 900), _row("fresh", "e2", 2, 0.0, 900)]  # rep 2 never ran e3
+    later = report.summarise(rows)["models"]["m"]["later_episodes"]
+    assert later["score_diff_per_rep"] == [0.25, 0.25]
+    assert later["score_diff_mean"] == 0.25 and later["score_diff_ci95"] == [0.25, 0.25]

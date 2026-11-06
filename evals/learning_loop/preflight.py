@@ -150,6 +150,19 @@ def server_props(base: str, key: str) -> dict:
     return body if status == 200 else {"error": f"HTTP {status}"}
 
 
+def server_answers(base: str, key: str) -> bool:
+    """Whether a local server still answers at all. Any HTTP status counts, as llama-server says 503 while it loads a
+    model. Only a refused, reset or silent connection means the process is gone."""
+    request = urllib.request.Request(base.removesuffix("/v1") + "/health", headers={"Authorization": f"Bearer {key}"})
+    try:
+        with urllib.request.urlopen(request, timeout=REQUEST_TIMEOUT_S):
+            return True
+    except urllib.error.HTTPError:
+        return True
+    except OSError:
+        return False
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.split("\n", 1)[0])
     parser.add_argument("--key-file", type=Path, required=True, help="file holding the OpenRouter key, nothing else")

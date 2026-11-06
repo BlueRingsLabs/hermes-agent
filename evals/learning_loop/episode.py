@@ -35,6 +35,7 @@ def _parse() -> argparse.Namespace:
     parser.add_argument("--provider", default="openrouter", help="openrouter, or custom for a local server")
     parser.add_argument("--max-iterations", type=int, default=40)
     parser.add_argument("--model-revision", default="", help="the exact weights and engine, e.g. a GGUF sha256")
+    parser.add_argument("--context-length", type=int, help="the local server's context window")
     return parser.parse_args()
 
 
@@ -54,13 +55,15 @@ def _sandbox(cell: Path) -> tuple[Path, Path]:
     return home, workspace
 
 
-def _write_config(home: Path, model: str, provider: str, base_url: str) -> None:
+def _write_config(home: Path, model: str, provider: str, base_url: str, context_length: int | None = None) -> None:
     """The model as a configured user's config.yaml names it (docs: integrations/providers.md); a local server is a
     ``custom`` provider with its base_url. An OpenRouter pin travels as AIAgent arguments, as the CLI derives them
     from provider_routing, and the review fork copies it from the parent."""
     lines = ["model:", f"  default: {model}", f"  provider: {provider}"]
     if provider != "openrouter":
         lines.append(f"  base_url: {base_url}")
+    if context_length:  # what the managed runtime knows from its own preset; compression keys off it
+        lines.append(f"  context_length: {context_length}")
     (home / "config.yaml").write_text("\n".join(lines) + "\n", encoding="utf-8")
 
 
@@ -129,6 +132,8 @@ def _attribution(agent, convo: dict, messages: list[dict], graded: dict, episode
         "protocol_valid": error is None and bool(convo.get("completed"))
         and not any(convo.get(k) for k in ("failed", "partial", "interrupted")),
         "turn_exit_reason": convo.get("turn_exit_reason"),
+        "context_length": getattr(getattr(agent, "context_compressor", None), "context_length", None),
+        "compression_threshold_tokens": getattr(getattr(agent, "context_compressor", None), "threshold_tokens", None),
         "digests": {"suite": at.digest(Path(fam.__file__).read_bytes()), "gold": at.digest(episode.hidden_test),
                     "skills": skills_at_start, "prompt_policy": at.digest(system_prompt) if system_prompt else None},
     }
@@ -138,7 +143,7 @@ def main() -> int:
     args = _parse()
     cell = Path(args.cell)
     home, workspace = _sandbox(cell)
-    _write_config(home, args.model, args.provider, args.base_url)
+    _write_config(home, args.model, args.provider, args.base_url, args.context_length)
     from evals.learning_loop import attribution as at, audit, family_conventions as fam
     capture = audit.attach()
     episode = next(e for e in fam.EPISODES if e.id == args.episode)

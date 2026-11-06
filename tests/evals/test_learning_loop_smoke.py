@@ -151,18 +151,25 @@ def provider():
 @pytest.mark.parametrize("mode", sorted(MODES))
 def test_two_episodes_per_arm_wire_learning_through_the_real_agent(provider, tmp_path, mode):
     flag, route, _Provider.upstream = MODES[mode]
+    # A local server's window reaches each episode's config. OpenRouter reports its own, so none is passed there.
+    window = ["--context-length", "98304"] if mode == "local" else []
     key_file = tmp_path / "key"
     key_file.write_text(KEY, encoding="utf-8")
     out = tmp_path / "run"
     # --disposable-host: this test's container is throwaway and its "model" is the script above.
     proc = subprocess.run(
         [sys.executable, str(ROOT / "evals/learning_loop/live.py"), "--key-file", str(key_file), "--out", str(out),
-         "--base-url", provider, "--provider", flag, "--route", route, "--reps", "1", "--disposable-host",
-         "--episodes", "percent_of,skip_empty_lines"],
+         "--base-url", provider, "--provider", flag, "--route", route, "--reps", "1", "--first-rep", "3",
+         "--disposable-host", "--episodes", "percent_of,skip_empty_lines", *window],
         cwd=ROOT, capture_output=True, text=True, timeout=900, check=False)
     assert proc.returncode == 0, proc.stdout[-3000:] + proc.stderr[-3000:]
     rows = {(r["arm"], r["episode"]): r for r in map(json.loads, (out / "results.jsonl").read_text().splitlines())}
     assert set(rows) == {(a, e) for a in ("carry", "fresh") for e in ("percent_of", "skip_empty_lines")}
+    # The block started at rep 3, and no call came near the point where Hermes compresses.
+    assert {r["rep"] for r in rows.values()} == {3}
+    for r in rows.values():
+        assert 0 < r["audit"]["max_input"]["main"] < r["compression_threshold_tokens"] < r["context_length"]
+        assert r["context_length"] == 98304 or mode == "openrouter"
     for arm in ("carry", "fresh"):
         first = rows[(arm, "percent_of")]
         assert first["exit_code"] == 0 and first["passed"], first.get("checks")
