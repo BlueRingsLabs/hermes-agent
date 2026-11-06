@@ -3,9 +3,9 @@
 Hermes leads with its learning loop (`README.md:19`): memory the agent curates, skills it writes after
 complex tasks, a background review that forks after turns to save both, and a curator that ages unused
 skills out. This directory measures what that loop **costs** (`prompt_growth.py`, offline, results below) and holds a
-**pilot of what it buys** (`live.py`, for real models; not yet run). The outcome question is the one
+**pilot of what it buys** (`live.py`, for real models, not yet run). The outcome question is the one
 [RFC #96704](https://github.com/NousResearch/hermes-agent/issues/96704) asks, and its first arm is
-[#122544](https://github.com/NousResearch/hermes-agent/pull/122544); nothing here duplicates them.
+[#122544](https://github.com/NousResearch/hermes-agent/pull/122544). Nothing here duplicates them.
 
 ## `prompt_growth.py`: what learning costs every later API call
 
@@ -33,7 +33,7 @@ environment, so the Hermes environment is never modified.
 ### Results
 
 [`results/2026-11-05-linux-py3.14-bare/`](results/2026-11-05-linux-py3.14-bare/): Hermes code identical to
-`main` at `90c19e31`; the exact commit is in `results.json`.
+`main` at `90c19e31`. The exact commit is in `results.json`.
 
 | learned skills | index rows | `o200k_base` tokens | Hermes estimate | share of 32k | share of 128k |
 |---:|---:|---:|---:|---:|---:|
@@ -45,7 +45,7 @@ environment, so the Hermes environment is never modified.
 | 200 | 239 | 4,914 | 4,980 | 15.0% | 3.7% |
 | 400 | 439 | 8,989 | 8,940 | 27.4% | 6.9% |
 
-Each learned skill adds **19.95 tokens** (least squares, `o200k_base`; Hermes' own estimate gives 19.64)
+Each learned skill adds **19.95 tokens** (least squares on `o200k_base`, or 19.64 by Hermes' own estimate)
 to the system prompt of every later session, on every API call of that session. The two counts agree
 within 7% at every checkpoint. At capacity, `MEMORY.md` and `USER.md` together cost **941 tokens** and
 stop there: the store refuses the next write (after 18 and 11 entries of this length).
@@ -57,7 +57,7 @@ What this shows:
 - The skills index does, linearly. Every learned skill stays listed in every new session
   (`agent/prompt_builder.py:1303`, "NEVER drop entries") until the curator archives it, by default after
   30 days unused (`hermes_cli/config_defaults.py:1490`). In practice the index tracks the skills used in
-  the last month; 400 is a stress point, not a typical profile.
+  the last month, so 400 is a stress point, not a typical profile.
 - Where the prefix is cached this is mostly cache-read cost. Where it is not (a cold cache, a local server
   without prefix reuse) it is prefill on every call.
 - A learned skill pays for itself only if the tokens and turns it saves in the sessions that use it exceed
@@ -69,7 +69,7 @@ What it does not show: whether a larger library makes the agent choose worse. Th
 
 ### How I know the numbers are right
 
-- Two full runs in fresh sandboxes must agree exactly; the script exits non-zero otherwise.
+- Two full runs in fresh sandboxes must agree exactly, or the script exits non-zero.
 - Every run checks three invariants: every create succeeded, the index grew by exactly one row per
   learned skill, and every learned skill is curator-managed (`created_by: agent`, which `skill_manage`
   records only for the review fork's writes, `tools/skill_manager_tool.py:775`).
@@ -88,16 +88,16 @@ What it does not show: whether a larger library makes the agent choose worse. Th
 - Linux x86_64, Python 3.14.9, a bare install: 20 tools in 11 toolsets, no provider keys or service
   credentials. Service-gated tools follow what a host has configured, and conditional skills follow
   them, so the number of listed bundled skills can differ by a few rows elsewhere. Here 39 of the 44 are
-  listed; the other five are macOS-only or need the kanban toolset. The per-skill slope does not depend
+  listed, and the other five are macOS-only or need the kanban toolset. The per-skill slope does not depend
   on this.
 - The default posture only. Focus mode (`agent/coding_context.py`) demotes categories to a names-only
-  line, which costs less; it is not measured.
+  line, which costs less. It is not measured.
 - Learned skills are represented by the 106 shipped optional skills that carry no platform,
   environment, app or toolset gate (real names, real descriptions within the 60-character budget),
-  cycled with a `-vN` suffix past 106. Names the agent writes may be longer or shorter; a row costs its
+  cycled with a `-vN` suffix past 106. Names the agent writes may be longer or shorter, and a row costs its
   name plus a description of at most 60 characters.
 - Measured on the cold path. On current `main` a build served from the on-disk snapshot can list an
-  `environments:`-gated skill that the cold scan hides; three open PRs fix this
+  `environments:`-gated skill that the cold scan hides. Three open PRs fix this
   ([#50316](https://github.com/NousResearch/hermes-agent/pull/50316),
   [#50335](https://github.com/NousResearch/hermes-agent/pull/50335),
   [#128038](https://github.com/NousResearch/hermes-agent/pull/128038)). The learned corpus holds no gated
@@ -108,7 +108,8 @@ What it does not show: whether a larger library makes the agent choose worse. Th
 
 **Status, 6 November 2026:** built and tested end to end against a scripted model
 (`tests/evals/test_learning_loop_smoke.py`). It has not yet run against a real model, so there are no outcome
-numbers yet.
+numbers yet. The study it will run is pre-registered in [`PREREGISTRATION.md`](PREREGISTRATION.md): Qwen3.8 27B on
+Hermes' pinned llama.cpp, on one GPU, through [`learning_loop_study.ipynb`](learning_loop_study.ipynb).
 
 The pilot answers one question per model: when a later session inherits what earlier sessions learned, is it more
 often right, or cheaper? It runs the default product end to end and tests no hypothesis: its numbers (cost per
@@ -120,7 +121,7 @@ thresholds are fixed in this README before its first scored run.
 - **Unit.** A cell is (model, arm, rep): the family's five episodes in order, each a new session in a fresh
   interpreter (`episode.py`), a real `AIAgent` with the default CLI tool surface, memory and background review on.
 - **Arms.** Both run the identical default product, review fork included, so inside an episode they are the same.
-  `carry` keeps the cell's `HERMES_HOME` from episode to episode, as a real user's home does; `fresh` resets it to
+  `carry` keeps the cell's `HERMES_HOME` from episode to episode, as a real user's home does, and `fresh` resets it to
   a just-installed home before every episode. Carry minus fresh on episodes 2 to 5 is the effect of carry-over
   alone, and episode 1, identical in both arms, is a built-in parity check.
 - **Family.** `family_conventions.py`: a small invoicing project with three rules written only in its
@@ -136,7 +137,7 @@ thresholds are fixed in this README before its first scored run.
   family. Each is pinned to its maker's own OpenRouter endpoint (`preflight.ROUTES`): OpenRouter serves glm-5.3
   from 48 endpoints between fp4 and fp8, and an unpinned run would mix quantisations nobody could reproduce.
 - **Audit.** Every API call of the main agent and the review fork is read from Hermes' own log lines
-  (`audit.py`), with the upstream provider OpenRouter reports; one call off the pinned route makes the episode an
+  (`audit.py`), with the upstream provider OpenRouter reports. One call off the pinned route makes the episode an
   infrastructure failure, never scored. Spend comes from OpenRouter's per-key counter, which counts every charged
   call whatever made it.
 
@@ -150,15 +151,38 @@ python3 evals/learning_loop/report.py evals/learning_loop/runs/pilot
 ```
 
 The default pilot is 2 models x 2 arms x 3 reps x 5 episodes, run one episode at a time. Once the budget is
-spent it starts no further episode (the key's own credit limit is the hard cap), and it resumes where it stopped:
-each episode's starting home is snapshotted and restored if the episode is retried. At the end it searches every output file for the key and
-fails loudly if it finds it.
+spent it starts no further episode (the key's own credit limit is the hard cap). Each episode's starting home is
+snapshotted first. An episode that fails without a valid record stops its cell, and the block runs it once more
+from that snapshot before the cell goes on, so no later episode builds on a failed one. If it fails again, the cell
+ends there. A stopped run resumes where it stopped, and a second run on the same output folder is refused. At the
+end it searches every output file for the key and fails loudly if it finds it.
+
+### Running the pre-registered study on one GPU
+
+[`learning_loop_study.ipynb`](learning_loop_study.ipynb) runs one block of the study on Colab or Kaggle. Each cell
+is one step of [`gpu_study.py`](gpu_study.py), and every step checks what it uses before going on:
+
+- The engine is Hermes' pinned llama.cpp from `pm/lock.json`, checked by sha256, or the same commit built from
+  source when the machine's driver cannot run that binary.
+- The model file is checked by size and sha256.
+- The server runs the preset Hermes generates for that file on a 24 GiB card, and only if it equals the
+  pre-registered [`study_preset.ini`](study_preset.ini) byte for byte.
+- The agent runs as an unprivileged account on the environment Hermes committed for the checkout. The checkout
+  is read-only to it, and the run stops if that account can read the checkpoint storage (Drive on Colab).
+- Progress is copied to the checkpoint every few minutes, and a block resumes where it stopped, on the same
+  machine or a new one. If the model server stops answering, the run stops, and the episode it was on is not
+  scored. Each session writes its own manifest: the commit, the GPU and driver, and the engine, preset and model
+  hashes.
+
+`tests/evals/test_learning_loop_gpu_study.py` covers the checks that run without a GPU. The account, the
+committed environment and a full block against a scripted server were also run as root on Ubuntu 24.04, the way
+the notebook runs them.
 
 ### Safety
 
 The agent runs real shell commands. In a programmatic session there is no approval surface, and commands the gate
 flags are approved unless an unattended context applies (`tools/approval.py:1211`), so the boundary is the
-operating system, as SECURITY.md section 2.2 says. A live run therefore refuses to start as root; run it as an
+operating system, as SECURITY.md section 2.2 says. A live run therefore refuses to start as root. Run it as an
 unprivileged account that holds nothing you care about, or in a VM. Each session's `HOME` is redirected into the
 cell with the `core_tool_deferral` sandbox, so `~` never reaches the operator's real home.
 
@@ -166,11 +190,15 @@ cell with the `core_tool_deferral` sandbox, so `~` never reaches the operator's 
 
 - `tests/evals/test_learning_loop_smoke.py` runs two cells end to end against a scripted OpenAI-compatible server on
   127.0.0.1: real `AIAgent` sessions, real tools, the real review fork. Episode 1 is solved through Hermes' terminal
-  tool in 12 tool turns and graded full marks; the review fires and writes a skill; every chat request, the fork's
-  included, carries the provider pin on the wire; in episode 2 the learned skill is in the system prompt for
-  `carry` and absent for `fresh`; the key reaches no output file.
+  tool in 12 tool turns and graded full marks. The review fires and writes a skill. Every chat request, the fork's
+  included, carries the provider pin on the wire. In episode 2 the learned skill is in the system prompt for
+  `carry` and absent for `fresh`, and the key reaches no output file.
 - The smoke test was shown to fail when the fresh arm stopped resetting, when the pin was dropped, and when the
   worker stopped waiting for the review fork (the fork's skill was then lost at exit).
+- `tests/evals/test_learning_loop_live.py` holds the runner to its failure rules. A failed episode stops its cell
+  and runs again once from the home it started with, an episode that fails again ends its cell for good, an
+  episode the server stopped under is not scored, and a second run on the same output is refused. Each test was
+  shown to fail with its rule removed.
 - `tests/evals/test_learning_loop_family.py` holds the grader to known answers on all five episodes, both ways.
   `tests/evals/test_learning_loop_preflight.py` and `tests/evals/test_learning_loop_report.py` cover the pre-flight's
   refusals and the report's arithmetic.
@@ -178,7 +206,7 @@ cell with the `core_tool_deferral` sandbox, so `~` never reaches the operator's 
 ### What the pilot must show before the full study
 
 1. Every scored episode stayed on its pinned route.
-2. The review fires in episode 1 for both models in most reps; if it does not, the family does not exercise the
+2. The review fires in episode 1 for both models in most reps. If it does not, the family does not exercise the
    loop and is redesigned before anything scales.
 3. Episode 1 is at parity between the arms, within the spread between reps.
 4. The measured cost per episode and the reps the report says the full study needs, which together set its cap.
