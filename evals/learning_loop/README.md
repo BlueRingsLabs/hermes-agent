@@ -2,8 +2,8 @@
 
 Hermes leads with its learning loop (`README.md:19`): memory the agent curates, skills it writes after
 complex tasks, a background review that forks after turns to save both, and a curator that ages unused
-skills out. This directory measures what that loop **costs** (`prompt_growth.py`, offline) and runs a **pilot of
-what it buys** (`live.py`, real models). The outcome question is the one
+skills out. This directory measures what that loop **costs** (`prompt_growth.py`, offline, results below) and holds a
+**pilot of what it buys** (`live.py`, for real models; not yet run). The outcome question is the one
 [RFC #96704](https://github.com/NousResearch/hermes-agent/issues/96704) asks, and its first arm is
 [#122544](https://github.com/NousResearch/hermes-agent/pull/122544); nothing here duplicates them.
 
@@ -102,6 +102,10 @@ What it does not show: whether a larger library makes the agent choose worse. Th
 - The background review's own tokens (the fork that writes these skills) are not measured here.
 
 ## `live.py`: a pilot of what carry-over buys
+
+**Status, 6 November 2026:** built and tested end to end against a scripted model
+(`tests/evals/test_learning_loop_smoke.py`). It has not yet run against a real model, so there are no outcome
+numbers yet.
 
 The pilot answers one question per model: when a later session inherits what earlier sessions learned, is it more
 often right, or cheaper? It runs the default product end to end and tests no hypothesis: its numbers (cost per
