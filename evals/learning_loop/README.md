@@ -203,6 +203,38 @@ cell with the `core_tool_deferral` sandbox, so `~` never reaches the operator's 
   `tests/evals/test_learning_loop_preflight.py` and `tests/evals/test_learning_loop_report.py` cover the pre-flight's
   refusals and the report's arithmetic.
 
+### Calibration: following a skill is not task benefit
+
+`tests/evals/test_learning_loop_calibration.py` reuses the conventions fixture and the real agent, tool and review
+paths, with a scripted local HTTP model. Episode 1 writes a workflow skill through the review fork. In episode 2,
+`carry` loads its contents with `skill_view` and follows its test, commit and changelog instructions; `fresh` has
+no learned skill. The model's task edits are prescribed independently of that workflow:
+
+| fresh task outcome | carry task outcome | carry follows skill | paired oracle difference |
+|---|---|---|---:|
+| fail | fail | yes | 0 |
+| pass | pass | yes | 0 |
+| fail | pass | yes | +1 |
+| pass | fail | yes | -1 |
+
+The workflow-inclusive score rises in all four controls. The report therefore also shows an independent oracle
+pass rate and its carry-minus-fresh contrast. Like the primary score in `PREREGISTRATION.md`, it averages paired
+episode differences within each repetition, requires every later episode in both arms, and bootstraps over
+repetitions (2,000 draws, 95% interval). The report includes the per-repetition differences and their count.
+Protocol-invalid rows remain scored as observed; only infrastructure failures are excluded. Both arms need an
+explicit Boolean `oracle_pass`; missing outcomes (including older records) remain unavailable, not failures,
+and make that repetition unavailable for the oracle contrast. Per-skill `effective` still means that row's
+oracle passed; it does not establish that the skill caused a benefit.
+
+Run these controls without provider credentials or paid inference:
+
+```bash
+bash scripts/run_tests.sh tests/evals/test_learning_loop_calibration.py tests/evals/test_learning_loop_report.py
+```
+
+These controls calibrate the measurement pipeline. Their prescribed outcomes are not evidence that any real
+model learns, improves or regresses.
+
 ### What the pilot must show before the full study
 
 1. Every scored episode stayed on its pinned route.

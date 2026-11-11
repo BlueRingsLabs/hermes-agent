@@ -60,9 +60,17 @@ def _prompt_tokens(row: dict) -> float | None:
     return float(value) if isinstance(value, (int, float)) else None
 
 
+def _oracle_outcome(row: dict) -> float | None:
+    """Explicit task outcome; model protocol violations remain scored as in the primary."""
+    value = row.get("oracle_pass")
+    return float(value) if isinstance(value, bool) else None
+
+
 def _cell_summary(rows: list[dict]) -> dict:
+    oracle = [value for r in rows if (value := _oracle_outcome(r)) is not None]
     return {"n": len(rows), "pass_rate": _mean([float(r.get("passed", False)) for r in rows]),
             "score": _mean([r.get("score", 0.0) for r in rows]),
+            "oracle_n": len(oracle), "oracle_pass_rate": _mean(oracle),
             "prompt_tokens": _mean([t for r in rows if (t := _prompt_tokens(r)) is not None]),
             "review_fired": _mean([float(r.get("review_fired", False)) for r in rows]),
             "cost_usd": _mean([r["cost_usd"] for r in rows if isinstance(r.get("cost_usd"), (int, float))]),
@@ -116,6 +124,7 @@ def summarise(rows: list[dict]) -> dict:
                  for ep in episodes for arm in ("carry", "fresh")}
         later = episodes[1:]
         score_d = _per_rep(scored, model, later, lambda r: r.get("score"))
+        oracle_d = _per_rep(scored, model, later, _oracle_outcome)
         token_d = _per_rep(scored, model, later, _prompt_tokens)
         fresh_tokens = _mean([t for r in scored if r["model"] == model and r["arm"] == "fresh"
                               and r["episode"] in later and (t := _prompt_tokens(r)) is not None])
@@ -124,6 +133,8 @@ def summarise(rows: list[dict]) -> dict:
             "parity_episode_1": {"score_diff": _paired(scored, model, episodes[0], lambda r: r.get("score"))},
             "later_episodes": {"score_diff_per_rep": [round(d, 4) for d in score_d],
                                "score_diff_mean": _mean(score_d), "score_diff_ci95": _ci(score_d),
+                               "oracle_reps": len(oracle_d), "oracle_pass_diff_per_rep": [round(d, 4) for d in oracle_d],
+                               "oracle_pass_diff_mean": _mean(oracle_d), "oracle_pass_diff_ci95": _ci(oracle_d),
                                "prompt_token_diff_mean": _mean(token_d), "prompt_token_diff_ci95": _ci(token_d)},
             "cost_per_episode_usd": _mean([r["cost_usd"] for r in scored if r["model"] == model
                                            and isinstance(r.get("cost_usd"), (int, float))]),
@@ -136,10 +147,13 @@ def summarise(rows: list[dict]) -> dict:
 def render(summary: dict) -> str:
     lines = ["# Learning-loop pilot report", ""]
     for model, data in summary["models"].items():
-        lines += [f"## {model}", "", "| arm/episode | n | pass rate | score | prompt tokens | review fired | cost $ |",
-                  "|---|---:|---:|---:|---:|---:|---:|"]
+        lines += [f"## {model}", "", "Pass rate and score include workflow checks. Oracle pass rate measures "
+                  "the independent task checks, including protocol-invalid rows. Missing outcomes are unavailable, not failures.",
+                  "", "| arm/episode | n | pass rate | score | oracle n | oracle pass rate | prompt tokens | review fired | cost $ |",
+                  "|---|---:|---:|---:|---:|---:|---:|---:|---:|"]
         for cell, s in data["cells"].items():
-            lines.append(f"| {cell} | {s['n']} | {s['pass_rate']} | {s['score']} | {s['prompt_tokens']} | "
+            lines.append(f"| {cell} | {s['n']} | {s['pass_rate']} | {s['score']} | "
+                         f"{s['oracle_n']} | {s['oracle_pass_rate']} | {s['prompt_tokens']} | "
                          f"{s['review_fired']} | {s['cost_usd']} |")
         lines += ["", "| arm/episode | review eligible | fired | wrote | carried skills | listed | loaded | adhered "
                   "| oracle |", "|---|---:|---:|---:|---:|---:|---:|---:|---:|"]
@@ -150,7 +164,9 @@ def render(summary: dict) -> str:
                          f"{a['skill_adhered']} | {a['skill_effective']} |")
         later = data["later_episodes"]
         lines += ["", f"- Episode 1 parity (carry minus fresh score, per rep): {data['parity_episode_1']['score_diff']}",
-                  f"- Later episodes, carry minus fresh: score {later['score_diff_mean']} (95% CI "
+                  f"- Later episodes, carry minus fresh: oracle pass rate {later['oracle_pass_diff_mean']} "
+                  f"(95% CI {later['oracle_pass_diff_ci95']}; {later['oracle_reps']} complete repetitions).",
+                  f"- Later episodes, carry minus fresh: workflow-inclusive score {later['score_diff_mean']} (95% CI "
                   f"{later['score_diff_ci95']}), prompt tokens {later['prompt_token_diff_mean']} (95% CI "
                   f"{later['prompt_token_diff_ci95']})",
                   f"- Cost per episode: ${data['cost_per_episode_usd']}",
