@@ -125,3 +125,12 @@ def test_oracle_keeps_explicit_outcomes_when_the_model_breaches_protocol(protoco
     assert model["cells"]["carry/e2"]["oracle_n"] == model["cells"]["fresh/e2"]["oracle_n"] == 1
     assert model["cells"]["carry/e2"]["oracle_pass_rate"] == 0.0
     assert model["cells"]["fresh/e2"]["oracle_pass_rate"] == 1.0
+
+
+def test_episode_one_tries_are_reported_and_only_the_one_that_learned_is_scored():
+    tries = [{**_row("carry", "e1", 0, 0.25, 900), "learned": False}, {**_row("carry", "e1", 0, 1.0, 900), "learned": True}]
+    summary = report.summarise(tries + [_row("carry", "e2", 0, 1.0, 800), _row("fresh", "e2", 0, 0.5, 1000)])
+    model = summary["models"]["m"]
+    assert model["first_episode"] == {"tries_per_rep": {0: 2}, "learned_reps": [0]}
+    assert model["cells"]["carry/e1"]["n"] == 1 and model["cells"]["carry/e1"]["score"] == 1.0
+    assert "learned in repetitions [0]" in report.render(summary)

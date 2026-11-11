@@ -111,8 +111,25 @@ def _paired(scored: list[dict], model: str, episode: str, metric) -> list[float]
             if by_arm["carry"][k] is not None and by_arm["fresh"][k] is not None]
 
 
+def _first_episode(rows: list[dict], model: str) -> dict | None:
+    """With live.py --learn-first: how many tries episode 1 took per repetition, and where the review wrote."""
+    tries = [r for r in rows if r["model"] == model and r.get("exit_code") == 0 and "learned" in r]
+    if not tries:
+        return None
+    return {"tries_per_rep": {rep: sum(r["rep"] == rep for r in tries) for rep in sorted({r["rep"] for r in tries})},
+            "learned_reps": sorted({r["rep"] for r in tries if r["learned"]})}
+
+
+def _episode_one_line(data: dict) -> str:
+    first = data["first_episode"]
+    if first:
+        return (f"- Episode 1, carry only, run until the review wrote something: tries per repetition "
+                f"{first['tries_per_rep']}, learned in repetitions {first['learned_reps']}")
+    return f"- Episode 1 parity (carry minus fresh score, per rep): {data['parity_episode_1']['score_diff']}"
+
+
 def summarise(rows: list[dict]) -> dict:
-    scored = [r for r in rows if r.get("exit_code") == 0]
+    scored = [r for r in rows if r.get("exit_code") == 0 and r.get("learned", True)]
     episodes = list(dict.fromkeys(r["episode"] for r in rows))
     models = list(dict.fromkeys(r["model"] for r in rows))
     rerun = {(r["model"], r["arm"], r["rep"], r["episode"]) for r in scored}
@@ -131,6 +148,7 @@ def summarise(rows: list[dict]) -> dict:
         out["models"][model] = {
             "cells": cells,
             "parity_episode_1": {"score_diff": _paired(scored, model, episodes[0], lambda r: r.get("score"))},
+            "first_episode": _first_episode(rows, model),
             "later_episodes": {"score_diff_per_rep": [round(d, 4) for d in score_d],
                                "score_diff_mean": _mean(score_d), "score_diff_ci95": _ci(score_d),
                                "oracle_reps": len(oracle_d), "oracle_pass_diff_per_rep": [round(d, 4) for d in oracle_d],
@@ -163,7 +181,7 @@ def render(summary: dict) -> str:
                          f"{a['carried_skills']} | {a['skill_eligible']} | {a['skill_activated']} | "
                          f"{a['skill_adhered']} | {a['skill_effective']} |")
         later = data["later_episodes"]
-        lines += ["", f"- Episode 1 parity (carry minus fresh score, per rep): {data['parity_episode_1']['score_diff']}",
+        lines += ["", _episode_one_line(data),
                   f"- Later episodes, carry minus fresh: oracle pass rate {later['oracle_pass_diff_mean']} "
                   f"(95% CI {later['oracle_pass_diff_ci95']}; {later['oracle_reps']} complete repetitions).",
                   f"- Later episodes, carry minus fresh: workflow-inclusive score {later['score_diff_mean']} (95% CI "

@@ -169,6 +169,9 @@ is one step of [`gpu_study.py`](gpu_study.py), and every step checks what it use
   pre-registered [`study_preset.ini`](study_preset.ini) byte for byte.
 - The agent runs as an unprivileged account on the environment Hermes committed for the checkout. The checkout
   is read-only to it, and the run stops if that account can read the checkpoint storage (Drive on Colab).
+- Episode 1 is the family's longest task and runs only in the `carry` cell, from a fresh install, until the
+  background review writes something (five tries at most). The `fresh` cell starts at episode 2. See Deviation 1
+  in the pre-registration for why.
 - Progress is copied to the checkpoint every few minutes, and a block resumes where it stopped, on the same
   machine or a new one. If the model server stops answering, the run stops, and the episode it was on is not
   scored. Each session writes its own manifest: the commit, the GPU and driver, and the engine, preset and model

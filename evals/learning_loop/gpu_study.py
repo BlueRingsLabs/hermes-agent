@@ -59,6 +59,10 @@ HEALTH_WAIT_S = 300
 LOAD_TIMEOUT_S = 1200
 SYNC_EVERY_S = 300
 EPISODE_TIMEOUT_S = 3600
+# Episode 1 is the session Hermes learns from, so it is the task that took the most tool iterations in the first
+# calibration, and it runs until the background review writes something (PREREGISTRATION.md, Deviation 1).
+EPISODE_ORDER = ("currency_symbol", "percent_of", "skip_empty_lines", "discounted_total", "parse_symbols")
+LEARN_FIRST_TRIES = 5
 
 
 def _run(cmd: list, timeout: int, **kwargs) -> subprocess.CompletedProcess:
@@ -460,7 +464,8 @@ def live_command(args: argparse.Namespace, server: dict) -> list[str]:
             "--provider", "custom", "--base-url", f"http://127.0.0.1:{server['port']}/v1",
             "--route", f"{server['model_id']}==", "--reps", str(args.reps), "--first-rep", str(args.first_rep),
             "--model-revision", model, "--context-length", str(server["context_length"]),
-            "--episode-timeout", str(EPISODE_TIMEOUT_S)])
+            "--episode-timeout", str(EPISODE_TIMEOUT_S), "--episodes", ",".join(EPISODE_ORDER),
+            "--learn-first", str(LEARN_FIRST_TRIES)])
 
 
 def cmd_run(args: argparse.Namespace) -> dict:

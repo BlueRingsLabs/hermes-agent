@@ -69,6 +69,9 @@ def _parse() -> argparse.Namespace:
                         help="the server's context window, written to each episode's config as model.context_length")
     parser.add_argument("--model-revision", default="",
                         help="the exact weights and engine served (e.g. the GGUF sha256), recorded on every row")
+    parser.add_argument("--learn-first", type=int, default=0, metavar="N",
+                        help="run episode 1 in the carry cell only, from a fresh install, up to N times until the "
+                             "background review writes something; the fresh cell starts at episode 2")
     parser.add_argument("--disposable-host", action="store_true",
                         help="this machine is a throwaway sandbox (e.g. a Kaggle notebook): allow running as root")
     parser.add_argument("--base-url", default=preflight.API, help=argparse.SUPPRESS)
@@ -142,7 +145,7 @@ def _attempt(row: dict) -> tuple:
 
 
 def _done(results: Path) -> set[tuple]:
-    return {_attempt(r) for r in _rows(results) if r.get("exit_code") == 0}
+    return {_attempt(r) for r in _rows(results) if r.get("exit_code") == 0 and r.get("learned", True)}
 
 
 def _failures(results: Path) -> Counter:
@@ -201,26 +204,45 @@ class _Stop(Exception):
     """The block cannot go on: the budget is spent, or the local server stopped answering."""
 
 
+def _first_episode(args, results: Path, route: dict, rep: int, first: str) -> str:
+    """Under --learn-first, where the carry cell's episode 1 stands: "learned" once the review wrote something,
+    "due" while it may run again, "never" once its tries or reruns are spent (the repetition is then not scored)."""
+    rows = [r for r in _rows(results) if _attempt(r) == (route["model"], "carry", rep, first)]
+    if any(r.get("exit_code") == 0 and r.get("learned") for r in rows):
+        return "learned"
+    tries, failed = sum(r.get("exit_code") == 0 for r in rows), sum(r.get("exit_code") != 0 for r in rows)
+    return "due" if tries < args.learn_first and failed <= RERUNS else "never"
+
+
 def _run_cell(args, key, route, arm, rep, episodes, template, results, usage_start) -> bool:
     """Run one cell's episodes in order, and say whether one failed and is due to run again.
 
     The cell stops at a failed episode: in the carry arm every later episode starts from the home that one leaves.
     The block runs it again from the home it started with before the cell goes on, RERUNS times at most. After
-    that the cell ends there for good, and its repetition is not scored."""
+    that the cell ends there for good, and its repetition is not scored.
+
+    With --learn-first, episode 1 runs in the carry cell only, from a fresh install, until the background review
+    writes something. The fresh cell waits for that and starts at episode 2."""
+    if args.learn_first and arm != "carry":
+        state = _first_episode(args, results, route, rep, episodes[0])
+        if state != "learned":
+            return state == "due"
     done, failures = _done(results), _failures(results)
     cell = args.out / "cells" / route["model"].replace("/", "__") / arm / f"rep{rep}"
     cell.mkdir(parents=True, exist_ok=True)
     for index, episode in enumerate(episodes):
-        attempt = (route["model"], arm, rep, episode)
-        if attempt in done:
+        attempt, first = (route["model"], arm, rep, episode), bool(args.learn_first) and index == 0
+        if attempt in done or (first and arm != "carry"):
             continue
-        if failures[attempt] > RERUNS:
+        if failures[attempt] > RERUNS or (first and _first_episode(args, results, route, rep, episode) == "never"):
             return False
         where = f"{route['model']} {arm} rep{rep} {episode}"
         spent = _spent(args, key, usage_start)
         if args.budget_usd is not None and spent is not None and spent >= args.budget_usd:
             raise _Stop(f"budget reached before {where}: ${spent:.2f}")
         row = _run_episode(args, key, route, arm, rep, cell, template, index, episode, usage_start)
+        if first and row["exit_code"] == 0:
+            row["learned"] = bool(row.get("review_wrote"))
         with results.open("a", encoding="utf-8") as f:
             f.write(json.dumps(row, default=str) + "\n")
         print(json.dumps({k: row.get(k) for k in ("model", "arm", "rep", "episode", "exit_code", "score",
@@ -229,6 +251,8 @@ def _run_cell(args, key, route, arm, rep, episodes, template, results, usage_sta
             if _server_down(args, key):
                 raise _Stop(f"the server stopped answering during {where}: start it again, then resume")
             return failures[attempt] < RERUNS
+        if row.get("learned") is False:
+            return True  # nothing learned: episode 1 runs again from a fresh install in the next pass
     return False
 
 
@@ -289,6 +313,8 @@ def main() -> int:
     key = args.key_file.expanduser().read_text(encoding="utf-8").strip()
     routes = _routes(args)
     episodes = args.episodes.split(",") if args.episodes else [e.id for e in fam.EPISODES]
+    if args.learn_first and "carry" not in args.arms.split(","):
+        raise SystemExit("--learn-first needs the carry arm")
     args.out.mkdir(parents=True, exist_ok=True)
     _lock = _hold_lock(args.out)  # held until this process exits
     usage_start = _preflight_or_exit(args, key, routes) if live else None
@@ -302,17 +328,21 @@ def main() -> int:
         stopped = str(stop)
     done = _done(results)
     ended = [" ".join(map(str, a)) for a, n in _failures(results).items() if n > RERUNS and a not in done]
+    never = [f"{route['model']} rep{rep}" for route in routes for rep in range(args.first_rep, args.first_rep + args.reps)
+             if args.learn_first and _first_episode(args, results, route, rep, episodes[0]) == "never"]
     leaks = _scan_for_key(args.out, key)
     manifest = {"routes": routes, "provider": args.provider, "base_url": args.base_url, "server": server,
                 "arms": args.arms, "reps": args.reps, "episodes": episodes, "live": live,
                 "budget_usd": args.budget_usd, "spent_usd": _spent(args, key, usage_start), "stopped": stopped,
-                "cells_ended_at": ended, "key_found_in": leaks}
+                "cells_ended_at": ended, "never_learned_in_episode_1": never, "key_found_in": leaks}
     (args.out / "manifest.json").write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
     if leaks:
         print(f"ALARM: the key appears in {len(leaks)} output file(s); see manifest.json", file=sys.stderr)
         return 1
     if ended:
         print(f"{len(ended)} cell(s) ended at an episode that failed on its rerun too: {', '.join(ended)}")
+    if never:
+        print(f"episode 1 never learned anything in: {', '.join(never)} (not scored)")
     print(stopped or "run complete")
     return 2 if stopped else 0
 

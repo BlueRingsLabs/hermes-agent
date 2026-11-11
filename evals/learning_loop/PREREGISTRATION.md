@@ -8,19 +8,22 @@ episode.
 
 ## Question
 
-In Hermes with the local model its catalog recommends (Qwen3.8 27B), does keeping what earlier sessions learned
-change how later sessions on the same project go, compared with starting every session from a fresh install?
+In Hermes with the local model its catalog recommends (Qwen3.8 27B), once a first session has taught Hermes
+something, does keeping what it learned change how the next sessions on the same project go, compared with starting
+each of them from a fresh install? (Worded this way since Deviation 1.)
 
 ## Design
 
 - **Arms.** Both arms run the same default product, background review included. `carry` keeps the cell's
   `HERMES_HOME` from one episode to the next, as a real user's home does. `fresh` resets it to a just-installed
   home before every episode. Inside an episode the two arms are identical.
-- **Unit.** A repetition is one `carry` cell and one `fresh` cell, each running the family's five episodes in
-  order: `percent_of`, `skip_empty_lines`, `currency_symbol`, `discounted_total`, `parse_symbols`
+- **Unit.** A repetition is one `carry` cell and one `fresh` cell over the family's five episodes in this order:
+  `currency_symbol`, `percent_of`, `skip_empty_lines`, `discounted_total`, `parse_symbols`
   (`family_conventions.py`). Every episode is a new single-turn session on a project rebuilt byte-identical.
-- **Parity.** Episode 1 starts from the same home in both arms, so it measures nothing but noise. Episodes 2 to 5
-  carry the effect.
+- **Episode 1.** It runs once per repetition, in the `carry` cell, from a just-installed home, and again from one
+  (five tries at most) until the background review writes something. The `fresh` cell starts at episode 2. Both
+  arms then face episodes 2 to 5 on the same project and differ only in whether the home that learned is kept. A
+  repetition whose episode 1 never learns is reported and not scored. Episodes 2 to 5 carry the effect.
 - **What can carry over.** In a single-turn session only the skill review can fire (after 10 tool iterations).
   The memory review needs 10 user turns, so memory changes only when the agent writes it itself.
 
@@ -48,7 +51,8 @@ server unless it matches `study_preset.ini` byte for byte.
   time.
 - **How it worked (descriptive).** Per row: whether the review was eligible, fired and wrote, and for every skill
   carried in, whether it was listed in the session's index, loaded, followed (the convention checks and tests run
-  through `./scripts/check`) and whether the independent oracle passed.
+  through `./scripts/check`) and whether the independent oracle passed. Per repetition, how many tries episode 1
+  needed.
 
 ## Analysis
 
@@ -59,8 +63,8 @@ server unless it matches `study_preset.ini` byte for byte.
   (2,000 resamples, seed 20261105). This is `report.py` as committed with this plan.
 - **Decision rule.** I say carry-over changed the score only if that interval excludes zero (two-sided). The
   smallest effect of interest is 0.10, one check in ten.
-- Episode 1's difference is reported as the parity check. Secondary outcomes get the same treatment, labelled as
-  secondary. Anything else is labelled exploratory.
+- Episode 1 runs in the `carry` cell only, so it has no difference to report. Secondary outcomes get the same
+  treatment as the primary, labelled as secondary. Anything else is labelled exploratory.
 
 ## Sample size
 
@@ -75,8 +79,8 @@ server unless it matches `study_preset.ini` byte for byte.
 The confirmatory run starts only if all of these hold. If one fails, I fix the cause, record it under Deviations
 and calibrate again.
 
-1. The review is eligible and fires in episode 1 in at least 3 of the 4 calibration cells. Otherwise the family
-   does not exercise the loop.
+1. In every calibration repetition, episode 1 learned something within its five tries. Otherwise the design cannot
+   deliver its treatment.
 2. At most one infrastructure failure per block that its automatic rerun did not recover (`rerun_scored` in the
    report).
 3. Every row ran with a 98,304-token window, and no call's prompt reached the compression threshold.
@@ -106,7 +110,26 @@ the report and this document with its amendments.
 
 ## Deviations
 
-None yet.
+**Deviation 1, 11 November 2026, after the first calibration and before any confirmatory run.** The first
+calibration (2 repetitions, 6 and 7 November, Hermes at `fcf98f0`) passed gates 2 to 4. There was no
+infrastructure failure, every row ran with a 98,304-token window, the largest prompt any call sent was 35,659
+tokens against a compression threshold of 73,728, and every hash matched. It failed gate 1. Episode 1
+(`percent_of`) took 7 to 9 tool iterations in all four cells, under the review's trigger of 10, so the review never
+ran there. It wrote skills in 5 of the 16 later episodes, and the result split on that. Carry minus fresh was
++0.375 in the repetition whose `carry` cell learned in episode 2, and -0.19 in the one whose `carry` cell never
+learned. The design was measuring whether learning happened as much as what it did.
+
+Two changes fix the cause without touching the product, the episodes or their grading:
+
+- Episode 1 is now `currency_symbol`, the task that took the most tool iterations on average in calibration (9 to
+  12). The other four keep their order.
+- Episode 1 runs only in the `carry` cell, from a fresh install, until the background review writes something,
+  five tries at most. The `fresh` cell starts at episode 2. The question is therefore what keeping a learned home
+  does once Hermes has learned something, and how often a first session teaches it something is reported on its
+  own. Gate 1 changes to match.
+
+A second calibration of 2 repetitions runs under these rules before Amendment 1. The first calibration's rows are
+kept and published, and they enter no analysis.
 
 ## Amendment 1 (after calibration)
 

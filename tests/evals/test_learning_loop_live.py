@@ -30,10 +30,11 @@ def test_a_resumed_run_starts_its_next_row_on_a_new_line(tmp_path):
     assert results.read_text(encoding="utf-8") == whole + "\n"
 
 
-def _block(tmp_path, monkeypatch, arms, fails=None, answers=lambda: True):
+def _block(tmp_path, monkeypatch, arms, fails=None, answers=lambda: True, learn_first=0, writes_on=()):
     """A block of one rep over a stand-in worker, and the list of every episode it started. The worker leaves a mark
     in the cell's home: '<episode>.learned' when the episode succeeds, '<episode>.partial' when it fails (exit 124,
-    the timeout's code). *fails* says how many times each episode fails before it succeeds."""
+    the timeout's code). *fails* says how many times each episode fails before it succeeds. The review writes a
+    skill in carry's episode 1 on the tries numbered in *writes_on*."""
     ran, fails = [], dict(fails or {})
 
     def worker(args, key, route, arm, rep, cell, episode):
@@ -41,7 +42,9 @@ def _block(tmp_path, monkeypatch, arms, fails=None, answers=lambda: True):
         failed = fails.get(f"{arm} {episode}", 0) > 0
         fails[f"{arm} {episode}"] = fails.get(f"{arm} {episode}", 0) - 1
         (cell / "hermes-home" / f"{episode}.{'partial' if failed else 'learned'}").write_text("x", encoding="utf-8")
-        (cell / f"{episode}.json").write_text("{}", encoding="utf-8")
+        wrote = arm == "carry" and episode == "e1" and ran.count("carry e1") in writes_on
+        record = {"review_wrote": [{"action": "create", "skill": "s"}]} if wrote else {}
+        (cell / f"{episode}.json").write_text(json.dumps(record), encoding="utf-8")
         return 124 if failed else 0
 
     monkeypatch.setattr(live, "_worker", worker)
@@ -50,7 +53,7 @@ def _block(tmp_path, monkeypatch, arms, fails=None, answers=lambda: True):
     template.mkdir()
     (template / "installed").write_text("x", encoding="utf-8")
     args = argparse.Namespace(out=tmp_path, first_rep=0, reps=1, arms=arms, budget_usd=None, provider="custom",
-                              base_url="http://127.0.0.1:1/v1")
+                              base_url="http://127.0.0.1:1/v1", learn_first=learn_first)
     run = lambda: live._run_block(args, "key", [{"model": "m"}], EPISODES, template, tmp_path / "results.jsonl", None)
     return run, ran
 
@@ -100,3 +103,19 @@ def test_a_second_run_on_the_same_output_is_refused(tmp_path, monkeypatch):
             live.main()
     assert not (out / "results.jsonl").exists()
 
+
+def test_episode_one_runs_in_carry_until_the_review_writes_and_fresh_starts_at_episode_two(tmp_path, monkeypatch):
+    run, ran = _block(tmp_path, monkeypatch, "carry,fresh", learn_first=5, writes_on={3})
+    run()
+    assert ran == ["carry e1", "carry e1", "carry e1", "carry e2", "carry e3", "fresh e2", "fresh e3"]
+    rows = live._rows(tmp_path / "results.jsonl")
+    assert [r.get("learned") for r in rows if r["episode"] == "e1"] == [False, False, True]
+    expected = {("m", "carry", 0, e) for e in EPISODES} | {("m", "fresh", 0, e) for e in EPISODES[1:]}
+    assert live._done(tmp_path / "results.jsonl") == expected
+
+
+def test_a_repetition_whose_episode_one_never_learns_runs_nothing_else(tmp_path, monkeypatch):
+    run, ran = _block(tmp_path, monkeypatch, "carry,fresh", learn_first=2)
+    run()
+    run()  # resuming the block later does not try a third time
+    assert ran == ["carry e1", "carry e1"]
