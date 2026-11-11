@@ -133,4 +133,18 @@ kept and published, and they enter no analysis.
 
 ## Amendment 1 (after calibration)
 
-Not written yet.
+Written 11 November 2026, after the second calibration and before any confirmatory episode.
+
+- **Second calibration** (2 repetitions, 11 November, Hermes at `f98da72`, under Deviation 1's rules). All four
+  gates passed. Episode 1 learned in both repetitions, after 2 tries each. There was no infrastructure failure.
+  Every row ran with a 98,304-token window, and the largest prompt any call sent was 36,776 tokens against a
+  compression threshold of 73,728. Every row names the pinned model file and engine, and the run cannot start
+  unless the preset matches.
+- **Repetitions.** The per-repetition differences were +0.125 and +0.375, so `reps_needed` for a 0.10 difference is
+  25. That is over the maximum, so the confirmatory run has **N = 20** repetitions, which detect a difference of
+  about 0.11 at 80% power, two-sided 5%.
+- **Code.** The confirmatory run uses commit `f98da72bb606547a3ae9847bc099de5c2226db8f`, as `STUDY =
+  "confirmatory"`, repetitions 0 to 19. Only its rows enter the confirmatory analysis.
+- **For the record.** The second calibration's estimates were a score difference of +0.25, an oracle difference of
+  0.0 and 43,864 more prompt tokens per later episode for `carry`. They are not results, they enter no analysis,
+  and they are published with the calibration rows.
