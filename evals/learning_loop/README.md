@@ -7,6 +7,10 @@ skills out. This directory measures what that loop **costs** (`prompt_growth.py`
 [RFC #96704](https://github.com/NousResearch/hermes-agent/issues/96704) asks, and its first arm is
 [#122544](https://github.com/NousResearch/hermes-agent/pull/122544). Nothing here duplicates them.
 
+A separate [proposed document-evidence family](EVIDENCE_FAMILY.md) supplies six synthetic
+questions and an offline grader. It is not connected to the live runner and does not
+change the registered conventions study.
+
 ## `prompt_growth.py`: what learning costs every later API call
 
 Offline and deterministic: no model calls, no network, no credentials. It drives Hermes' own code
