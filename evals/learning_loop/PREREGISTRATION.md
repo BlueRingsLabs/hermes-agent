@@ -148,3 +148,8 @@ Written 11 November 2026, after the second calibration and before any confirmato
 - **For the record.** The second calibration's estimates were a score difference of +0.25, an oracle difference of
   0.0 and 43,864 more prompt tokens per later episode for `carry`. They are not results, they enter no analysis,
   and they are published with the calibration rows.
+
+## Results
+
+The analysis follows this plan as amended above. It is written up in [`RESULTS.md`](RESULTS.md), dated 18 November
+2026.

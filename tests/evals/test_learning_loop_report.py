@@ -134,3 +134,15 @@ def test_episode_one_tries_are_reported_and_only_the_one_that_learned_is_scored(
     assert model["first_episode"] == {"tries_per_rep": {0: 2}, "learned_reps": [0]}
     assert model["cells"]["carry/e1"]["n"] == 1 and model["cells"]["carry/e1"]["score"] == 1.0
     assert "learned in repetitions [0]" in report.render(summary)
+
+
+def test_a_published_run_is_read_from_its_gzipped_rows(tmp_path):
+    import gzip
+    import json
+
+    lines = "".join(json.dumps(r) + "\n" for r in _rows())
+    (tmp_path / "plain").mkdir()
+    (tmp_path / "plain" / "results.jsonl").write_text(lines, encoding="utf-8")
+    (tmp_path / "packed").mkdir()
+    (tmp_path / "packed" / "results.jsonl.gz").write_bytes(gzip.compress(lines.encode("utf-8")))
+    assert report._rows(tmp_path / "packed") == report._rows(tmp_path / "plain") == _rows()

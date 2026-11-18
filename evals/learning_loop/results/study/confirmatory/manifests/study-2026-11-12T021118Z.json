@@ -1,0 +1,68 @@
+{
+ "study": "confirmatory",
+ "hermes_commit": "f98da72bb606547a3ae9847bc099de5c2226db8f",
+ "platform": {
+  "COLAB_RELEASE_TAG": "release-colab-external-images_20261109-060054_RC00",
+  "COLAB_GPU": "1"
+ },
+ "model": {
+  "repo": "unsloth/Qwen3.8-27B-GGUF",
+  "revision": "4ca720788d1e01f1bff70c033e0d0028fd02e502",
+  "file": "Qwen3.8-27B-UD-Q4_K_M.gguf",
+  "size": 16464440224,
+  "sha256": "322e194ff79741c7baa497c240f677f54b201b0efab44ca8e50f122b39123482"
+ },
+ "engine": {
+  "tag": "b11671",
+  "commit": "ba3c05f71da85cd0439e84ba42b0478b24d5db16",
+  "how": "built from https://github.com/ggml-org/llama.cpp at ba3c05f71da85cd0439e84ba42b0478b24d5db16 with CUDA 13.0 for sm_80",
+  "artifacts": [],
+  "driver_cuda": "13.0",
+  "prebuilt_cuda": "13.4",
+  "binary": "/opt/hermes-study/engine/source/llama.cpp/build/bin/llama-server",
+  "engine_dir": "/opt/hermes-study/engine/source",
+  "sha256": "27335e6d457dd6b2cb3236bc93d8ae40ffbbc44357eafaf8db7b4b67dd2e4670",
+  "devices": [
+   "CUDA0: NVIDIA A100-SXM4-40GB (40441 MiB, 40013 MiB free)"
+  ],
+  "gpus": [
+   {
+    "name": "NVIDIA A100-SXM4-40GB",
+    "memory.total": "40960 MiB",
+    "driver_version": "580.82.07",
+    "compute_cap": "8.0"
+   }
+  ]
+ },
+ "server": {
+  "pid": 11877,
+  "port": 18081,
+  "command": [
+   "/opt/hermes-study/engine/source/llama.cpp/build/bin/llama-server",
+   "--host",
+   "127.0.0.1",
+   "--port",
+   "18081",
+   "--api-key-file",
+   "/opt/hermes-study/server.key",
+   "--models-max",
+   "1",
+   "--models-autoload",
+   "--metrics",
+   "--slots",
+   "--no-ui",
+   "--jinja",
+   "--load-mode",
+   "dio",
+   "--models-preset",
+   "/opt/hermes-study/presets.ini"
+  ],
+  "model_id": "Qwen3.8-27B-UD-Q4_K_M",
+  "preset_sha256": "fefc23208ed9c2559caf85347d85e8fa1ba77a6b0b3e9fbfa4bdf11fe4b696d0",
+  "context_length": 98304,
+  "session_n_ctx": 98304
+ },
+ "preset_sha256": "fefc23208ed9c2559caf85347d85e8fa1ba77a6b0b3e9fbfa4bdf11fe4b696d0",
+ "agent_user": "hermes-eval",
+ "written": "2026-11-12T02:11:18Z"
+}

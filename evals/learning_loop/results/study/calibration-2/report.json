@@ -1,0 +1,253 @@
+{
+  "infra_failures": [],
+  "models": {
+    "Qwen3.8-27B-UD-Q4_K_M": {
+      "cells": {
+        "carry/currency_symbol": {
+          "n": 2,
+          "pass_rate": 1.0,
+          "score": 1.0,
+          "oracle_n": 2,
+          "oracle_pass_rate": 1.0,
+          "prompt_tokens": 202176.0,
+          "review_fired": 1.0,
+          "cost_usd": null,
+          "attribution": {
+            "review_eligible": 1.0,
+            "review_fired": 1.0,
+            "review_wrote": 1.0,
+            "carried_skills": 0,
+            "skill_eligible": null,
+            "skill_activated": null,
+            "skill_adhered": null,
+            "skill_effective": null
+          }
+        },
+        "fresh/currency_symbol": {
+          "n": 0,
+          "pass_rate": null,
+          "score": null,
+          "oracle_n": 0,
+          "oracle_pass_rate": null,
+          "prompt_tokens": null,
+          "review_fired": null,
+          "cost_usd": null,
+          "attribution": {
+            "review_eligible": null,
+            "review_fired": null,
+            "review_wrote": null,
+            "carried_skills": 0,
+            "skill_eligible": null,
+            "skill_activated": null,
+            "skill_adhered": null,
+            "skill_effective": null
+          }
+        },
+        "carry/percent_of": {
+          "n": 2,
+          "pass_rate": 1.0,
+          "score": 1.0,
+          "oracle_n": 2,
+          "oracle_pass_rate": 1.0,
+          "prompt_tokens": 189508.0,
+          "review_fired": 0.5,
+          "cost_usd": null,
+          "attribution": {
+            "review_eligible": 0.5,
+            "review_fired": 0.5,
+            "review_wrote": 0.5,
+            "carried_skills": 2,
+            "skill_eligible": 1.0,
+            "skill_activated": 1.0,
+            "skill_adhered": 1.0,
+            "skill_effective": 1.0
+          }
+        },
+        "fresh/percent_of": {
+          "n": 2,
+          "pass_rate": 0.5,
+          "score": 0.75,
+          "oracle_n": 2,
+          "oracle_pass_rate": 1.0,
+          "prompt_tokens": 180224.5,
+          "review_fired": 0.5,
+          "cost_usd": null,
+          "attribution": {
+            "review_eligible": 0.5,
+            "review_fired": 0.5,
+            "review_wrote": 0.0,
+            "carried_skills": 0,
+            "skill_eligible": null,
+            "skill_activated": null,
+            "skill_adhered": null,
+            "skill_effective": null
+          }
+        },
+        "carry/skip_empty_lines": {
+          "n": 2,
+          "pass_rate": 1.0,
+          "score": 1.0,
+          "oracle_n": 2,
+          "oracle_pass_rate": 1.0,
+          "prompt_tokens": 227956.5,
+          "review_fired": 0.5,
+          "cost_usd": null,
+          "attribution": {
+            "review_eligible": 0.5,
+            "review_fired": 0.5,
+            "review_wrote": 0.5,
+            "carried_skills": 2,
+            "skill_eligible": 1.0,
+            "skill_activated": 1.0,
+            "skill_adhered": 1.0,
+            "skill_effective": 1.0
+          }
+        },
+        "fresh/skip_empty_lines": {
+          "n": 2,
+          "pass_rate": 0.5,
+          "score": 0.75,
+          "oracle_n": 2,
+          "oracle_pass_rate": 1.0,
+          "prompt_tokens": 152109.0,
+          "review_fired": 0.5,
+          "cost_usd": null,
+          "attribution": {
+            "review_eligible": 0.5,
+            "review_fired": 0.5,
+            "review_wrote": 0.5,
+            "carried_skills": 0,
+            "skill_eligible": null,
+            "skill_activated": null,
+            "skill_adhered": null,
+            "skill_effective": null
+          }
+        },
+        "carry/discounted_total": {
+          "n": 2,
+          "pass_rate": 0.0,
+          "score": 0.75,
+          "oracle_n": 2,
+          "oracle_pass_rate": 0.0,
+          "prompt_tokens": 179724.5,
+          "review_fired": 0.5,
+          "cost_usd": null,
+          "attribution": {
+            "review_eligible": 0.5,
+            "review_fired": 0.5,
+            "review_wrote": 0.5,
+            "carried_skills": 2,
+            "skill_eligible": 1.0,
+            "skill_activated": 1.0,
+            "skill_adhered": 1.0,
+            "skill_effective": 0.0
+          }
+        },
+        "fresh/discounted_total": {
+          "n": 2,
+          "pass_rate": 0.0,
+          "score": 0.75,
+          "oracle_n": 2,
+          "oracle_pass_rate": 0.0,
+          "prompt_tokens": 183245.0,
+          "review_fired": 1.0,
+          "cost_usd": null,
+          "attribution": {
+            "review_eligible": 1.0,
+            "review_fired": 1.0,
+            "review_wrote": 1.0,
+            "carried_skills": 0,
+            "skill_eligible": null,
+            "skill_activated": null,
+            "skill_adhered": null,
+            "skill_effective": null
+          }
+        },
+        "carry/parse_symbols": {
+          "n": 2,
+          "pass_rate": 1.0,
+          "score": 1.0,
+          "oracle_n": 2,
+          "oracle_pass_rate": 1.0,
+          "prompt_tokens": 190206.0,
+          "review_fired": 0.5,
+          "cost_usd": null,
+          "attribution": {
+            "review_eligible": 0.5,
+            "review_fired": 0.5,
+            "review_wrote": 0.5,
+            "carried_skills": 2,
+            "skill_eligible": 1.0,
+            "skill_activated": 1.0,
+            "skill_adhered": 1.0,
+            "skill_effective": 1.0
+          }
+        },
+        "fresh/parse_symbols": {
+          "n": 2,
+          "pass_rate": 0.0,
+          "score": 0.5,
+          "oracle_n": 2,
+          "oracle_pass_rate": 1.0,
+          "prompt_tokens": 96362.0,
+          "review_fired": 0.0,
+          "cost_usd": null,
+          "attribution": {
+            "review_eligible": 0.0,
+            "review_fired": 0.0,
+            "review_wrote": 0.0,
+            "carried_skills": 0,
+            "skill_eligible": null,
+            "skill_activated": null,
+            "skill_adhered": null,
+            "skill_effective": null
+          }
+        }
+      },
+      "parity_episode_1": {
+        "score_diff": []
+      },
+      "first_episode": {
+        "tries_per_rep": {
+          "0": 2,
+          "1": 2
+        },
+        "learned_reps": [
+          0,
+          1
+        ]
+      },
+      "later_episodes": {
+        "score_diff_per_rep": [
+          0.125,
+          0.375
+        ],
+        "score_diff_mean": 0.25,
+        "score_diff_ci95": [
+          0.125,
+          0.375
+        ],
+        "oracle_reps": 2,
+        "oracle_pass_diff_per_rep": [
+          0.0,
+          0.0
+        ],
+        "oracle_pass_diff_mean": 0.0,
+        "oracle_pass_diff_ci95": [
+          0.0,
+          0.0
+        ],
+        "prompt_token_diff_mean": 43863.625,
+        "prompt_token_diff_ci95": [
+          42047.75,
+          45679.5
+        ]
+      },
+      "cost_per_episode_usd": null,
+      "reps_needed": {
+        "score_10_points": 25,
+        "prompt_tokens_25_percent": 2
+      }
+    }
+  }
+}

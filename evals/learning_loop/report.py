@@ -12,6 +12,7 @@ the sd itself is rough, so treat it as a floor to round up, not a promise.
 """
 from __future__ import annotations
 
+import gzip
 import json
 import math
 import random
@@ -26,9 +27,13 @@ BOOTSTRAP_DRAWS, SEED = 2000, 20261105
 
 
 def _rows(run: Path) -> list[dict]:
-    """Complete rows only: a line cut off when a machine went away mid-write is not a result."""
+    """Complete rows only: a line cut off when a machine went away mid-write is not a result. A published run keeps
+    its rows gzipped (results.jsonl.gz), under the repository's blob limit."""
+    plain = run / "results.jsonl"
+    text = plain.read_text(encoding="utf-8") if plain.exists() else gzip.decompress(
+        (run / "results.jsonl.gz").read_bytes()).decode("utf-8")
     rows = []
-    for line in (run / "results.jsonl").read_text(encoding="utf-8").splitlines():
+    for line in text.splitlines():
         try:
             rows.append(json.loads(line))
         except ValueError:

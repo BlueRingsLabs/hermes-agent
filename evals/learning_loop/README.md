@@ -106,10 +106,10 @@ What it does not show: whether a larger library makes the agent choose worse. Th
 
 ## `live.py`: a pilot of what carry-over buys
 
-**Status, 11 November 2026:** the study is pre-registered in [`PREREGISTRATION.md`](PREREGISTRATION.md): Qwen3.8
-27B on Hermes' pinned llama.cpp, on one GPU, through [`learning_loop_study.ipynb`](learning_loop_study.ipynb). Two
-calibration blocks have run on an A100 (Deviation 1 and Amendment 1 there). The confirmatory run is next, so there
-are no outcome numbers yet.
+**Status, 18 November 2026:** the pre-registered study has run ([`PREREGISTRATION.md`](PREREGISTRATION.md),
+[`learning_loop_study.ipynb`](learning_loop_study.ipynb)). Keeping what a first session taught Hermes raised later
+sessions' score by 0.17 (95% interval 0.09 to 0.25, 19 repetitions), all of it from following the project's commit
+and changelog rules. The results and their limits are in [`RESULTS.md`](RESULTS.md).
 
 The pilot answers one question per model: when a later session inherits what earlier sessions learned, is it more
 often right, or cheaper? It runs the default product end to end and tests no hypothesis: its numbers (cost per
